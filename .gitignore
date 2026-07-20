@@ -1,0 +1,115 @@
+# ============================================================
+# MPV-lazy 项目 .gitignore
+# 仅跟踪配置、脚本、安装器，排除大型二进制和运行时环境
+# ============================================================
+
+# --- MPV 播放器二进制 ---
+/mpv.exe
+/mpv.com
+/mpv-*.exe
+/*.dll
+/*.pyd
+/*.lib
+/*.dll.a
+/*.exe
+
+# --- Python 运行环境 ---
+/Lib/
+/Scripts/
+/pyvenv.cfg
+/python.exe
+/pythonw.exe
+/python*.dll
+/python*.zip
+
+# --- VapourSynth 运行时 ---
+/vs-plugins/
+/vs-coreplugins/
+/vsgenstubs4/
+/sdk/
+/VSPipe.exe
+/VSScript.dll
+/VSScriptPython38.dll
+/VSVFW.dll
+/AVFS.exe
+
+# --- 7-Zip ---
+/7z/
+/7z.dll
+/7z.exe
+
+# --- 其他运行时工具 ---
+/TorrServer-windows-amd64.exe
+/alass.exe
+/concrt140.dll
+/libcrypto-3.dll
+/libffi-8.dll
+/libssl-3.dll
+/lua51.dll
+/luajit.exe
+/msvcp140*.dll
+/vcruntime140*.dll
+/ucrtbase.dll
+/vulkan-1.dll
+/libplacebo*.dll
+
+# --- Lua Socket 二进制模块 ---
+/socket/core.dll
+/mime/core.dll
+
+# --- 文档 (来自上游构建) ---
+/doc/
+
+# --- Python 打包/工具文件 ---
+/MANIFEST.in
+/get-pip.py
+/vsgenstubs.py
+/vsrepo.py
+/python.cat
+/python*._pth
+
+# --- 杂项 ---
+/_nul
+
+# --- Faster-Whisper 模型 ---
+/Faster-Whisper-XXL/
+
+# --- 运行时缓存和数据 ---
+/portable_config/cache/
+/portable_config/files/animated/
+/portable_config/files/chapters/
+/portable_config/files/command_history.txt
+/portable_config/files/cutfragments/
+/portable_config/files/danmaku-history.json
+/portable_config/files/mpvClipboard.log
+/portable_config/files/mpvHistory.log
+/portable_config/files/persistent_config.json
+/portable_config/files/recent.json
+/portable_config/files/uosc_danmaku_match_cache.json
+
+# --- 字体 (大型二进制) ---
+# 如需跟踪字体，请取消下面的注释
+/portable_config/fonts/
+
+# --- 系统文件 ---
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# --- Linux ---
+.directory
+.Trash-*
+
+# --- IDE / 编辑器 ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.bak
