@@ -1,134 +1,132 @@
-# MPV Config (Windows)
+# MPV Portable
 
-这是一个针对 Windows 平台的 [mpv 播放器](https://github.com/mpv-player/mpv) 的完整配置项目。
+> 个人定制版 MPV 便携播放器，三包发布，按需组装。
+>
+> Fork from [gaoxing64/MPV-lazy-full](https://github.com/gaoxing64/MPV-lazy-full) v2.0.0
 
-## 项目介绍
-
-这是一个适用于 Windows 的高质量 [mpv](https://github.com/mpv-player/mpv) 播放器配置方案。包含专业的视频渲染、音频处理、字幕支持和丰富的脚本扩展功能。
-
-## 配置结构
+## 三个包的关系
 
 ```
-portable_config/
-├── scripts/              # 第三方脚本 (.lua)
-├── script-opts/          # 脚本配置文件 (.conf)
-├── script-modules/       # 脚本模块
-├── osc-style/            # OSC主题
-├── shaders/              # GLSL视频着色器
-├── vs/                   # VapourSynth脚本
-├── fonts/                # 字体目录
-├── icc/                  # ICC色彩配置文件目录
-├── cache/                # 缓存目录
-├── files/                # 文件输出目录
-├── mpv.conf             # 主配置文件
-├── input.conf           # 键位绑定配置
-├── menu.conf            # 菜单配置
-├── manager.json         # 脚本管理器源配置
-└── README.md            # 说明文档
+┌─────────────────────────────────────────────────┐
+│                   mpv-extras                     │
+│   ┌─────────────────────────────────────────┐   │
+│   │              mpv-base                    │   │
+│   │   ┌─────────────────────────────────┐   │   │
+│   │   │         mpv-config              │   │   │
+│   │   │   scripts / settings / fonts    │   │   │
+│   │   └─────────────────────────────────┘   │   │
+│   │   mpv.exe + DLLs + Lua runtime          │   │
+│   └─────────────────────────────────────────┘   │
+│   shaders + VapourSynth + AI + Python + tools    │
+└─────────────────────────────────────────────────┘
 ```
 
-## 主要配置特性
+| 包 | 解压即用? | 内容 |
+|----|----------|------|
+| **Config** | ✗ (需要 mpv 本体) | 脚本、设置、OSC 主题、字体 |
+| **Base** | ✅ 基本播放 | Config + mpv 核心 + 运行时 |
+| **Extras** | ✗ (需要 Base) | 着色器、VapourSynth 补帧/超分、AI 字幕、工具 |
+| **Base + Extras** | ✅ 完整体验 | 所有功能 |
 
-### 音频配置
+## 下载与安装
 
-- WACAPI 输出驱动（Windows平台推荐），支持多声道音频
-- 音速调整与音高校正，软件音效处理
+### 方案一：完整安装（推荐）
 
-### 字幕配置
+从 [Releases](https://github.com/maxzrb/mpv-portable/releases) 下载：
 
-- 多语言支持（中文、日文等）和多格式字幕渲染
-- 智能编码处理和强大的 ASS 字幕处理器
+1. 下载 `mpv-base-vX.Y.Z.7z`
+2. 下载 `mpv-extras-vX.Y.Z.7z.001` 和 `.002`（两个分卷都需要）
+3. 解压 Base 包到你想要的位置
+4. 解压 Extras 包到**同一目录**（用 7-Zip 打开 `.001` 即可）
+5. 运行 `mpv.exe`
 
-### 界面配置
+```
+最终目录结构：
+mpv-portable/
+├── mpv.exe
+├── portable_config/    ← Config 包的完整内容
+│   ├── mpv.conf
+│   ├── scripts/        ← 所有 Lua 脚本
+│   ├── shaders/        ← Extras 包的着色器
+│   └── vs/             ← Extras 包的 VapourSynth 脚本
+├── vs-plugins/         ← Extras 包的 VS 插件
+├── lua51.dll, vulkan-1.dll, ...
+└── ...
+```
 
-- 禁用了原生 OSC（On-Screen Controller）
-- 基于 uosc 的现代化界面（位于 scripts/uosc/）
-- 高度定制化 OSD 信息
+### 方案二：只用配置
 
-## 着色器系统
+已有 mpv 播放器，只想用这套配置：
 
-项目集成了大量高质量的 GLSL 着色器，主要来源于 [hooke007/mpv_PlayKit](https://github.com/hooke007/mpv_PlayKit) 仓库，包括：
+1. 下载 `mpv-config-vX.Y.Z.7z`
+2. 解压到 mpv 的配置目录（覆盖 `portable_config/`）
 
-- **超分辨率**：Anime4K, FSRCNNX, RAVU, NNEDI3, ArtCNN, CuNNy, ESRGAN, ACNet, AiUpscale 等
-- **抗锯齿**：AA 系列抗锯齿着色器
-- **降噪**：nlmeans, guided 等高级降噪着色器
-- **锐化**：Adaptive_sharpen, USM, WarpSharp 等锐化着色器
-- **色彩处理**：CfL, LUT, color 等色彩处理着色器
-- **细节增强**：SSimSuperRes 用于细节保持
-- **色度升频**：KrigBilateral 优质色度升频算法
-- **其他**：Deband, deint, RAISR, MagicKernel 等实用着色器
+### 方案三：手动组装
 
-详细使用说明请参考：[GLSL Wiki](https://github.com/hooke007/mpv_PlayKit/wiki/4_GLSL)
+1. 下载任意标准 mpv Windows 构建
+2. 下载 `mpv-config-vX.Y.Z.7z`，解压到 mpv 目录
+3. 如需完整功能，再下载 `mpv-extras-vX.Y.Z.7z.00x` 解压
 
-## VapourSynth 脚本
+## 更新方式
 
-项目集成了基于 [LumeCraft-Labs/K7sfunc](https://github.com/LumeCraft-Labs/K7sfunc) 的 VapourSynth 视频处理脚本（位于 `vs/` 目录），这是一个为 mpv 特向优化的 VS 包装器，支持：
+- **仅更新配置**：下载最新 Config 包，解压覆盖即可
+- **更新核心**：下载最新 Base 包
+- **更新着色器/插件**：下载最新 Extras 包
 
-- **格式控制**：FMT_CHANGE, FMT_CTRL, FPS_CHANGE, FPS_CTRL 等格式转换模块
-- **超分辨率**：ACNET_STD, ARTCNN_NV, CUGAN_NV, EDI_US_STD, NGU_HQ 等AI放大算法
-- **运动补偿（补帧）**：MVT_LQ, MVT_MQ, DRBA, RIFE, SVP 等多种补帧算法
-- **去块降噪**：DPIR, BILA, BM3D, CCD, DFTT, FFT3D, NLM 等降噪算法
-- **其它处理**：CSC_UV, DEBAND, DEINT 等图像处理模块
-- **混合功能**：MIX 系列组合模块
+日常小改动通常只需要更新 Config 包。
 
-详细使用说明请参考：[K7sfunc Wiki](https://github.com/hooke007/mpv_PlayKit/wiki/3_K7sfunc)
+## 配置特性
 
-## 脚本功能
+### 音频
+- WASAPI 输出，支持多声道
+- 音速调整与音高校正
 
-### 主要功能特性
+### 字幕
+- 多语言、多格式字幕渲染
+- AI 字幕生成（Faster-Whisper，需自行下载模型）
+- 在线字幕下载（Assrt.net）
 
-- **文件管理**：集成文件浏览器与播放列表管理器
-- **字幕处理**：下载、同步、AI生成字幕
-- **历史记录**：播放记录管理与书签功能
-- **实用工具**：YouTube-DL 选择器、智能裁剪、音频同步等功能
+### 界面
+- 基于 [uosc](https://github.com/tomasklaen/uosc) 的现代化 OSC
+- 弹幕系统（[uosc_danmaku](https://github.com/Loukyuu1120/uosc_danmaku)）
+- 汉化统计信息 OSD
 
-### 特色脚本
+### 视频处理
+- 500+ GLSL 着色器（Anime4K、FSRCNNX、ESRGAN 等 35 类）
+- VapourSynth 补帧/超分/降噪（RIFE、SVP、DRBA、ArtCNN）
+- HDR/SDR 自适应切换
 
-- `uosc`：现代化用户界面
-- `uosc_danmaku`：弹弹Play弹幕系统（[Loukyuu1120 版本](https://github.com/Loukyuu1120/uosc_danmaku)），支持多弹幕源切换与弹幕池选择菜单
-- `simple-history`：播放历史管理
-- `playlistmanager`：播放列表管理
-- `sub-assrt`：在线字幕下载
-- `autosubsync`：音频字幕同步
-- `file-browser`：文件浏览器
+### 快捷键
+- `h/j/k/l` — 基本播放控制
+- `i` — 临时显示统计信息，`I` — 常驻显示
+- `1`~`5`/`0` — 切换统计信息页面
+- `Ctrl+数字` — 快速切换着色器
+- `Alt+数字` — 切换预设配置组
 
-## 使用技巧
+## 自定义
 
-- **播放控制**：使用 `hjkl` 快捷键进行基本播放控制
-- **字幕操作**：`j/k/v` 切换字幕轨及开关
-- **视频滤镜**：`CTRL+数字` 快速切换着色器
-- **配置切换**：`ALT+数字` 应用预设配置组
+配置文件在 `portable_config/` 下：
 
-## 自定义配置
+| 文件 | 用途 |
+|------|------|
+| `mpv.conf` | 主配置 |
+| `input.conf` | 键位绑定 + uosc 右键菜单 |
+| `profiles.conf` | 条件配置组（分辨率/HDR自适应） |
+| `scripts/` | Lua 脚本 |
+| `script-opts/` | 脚本配置 |
+| `shaders/` | GLSL 着色器（Extras 包） |
+| `vs/` | VapourSynth 脚本（Extras 包） |
 
-配置使用了智能的条件配置组，可根据不同情况进行自动定制：
+## 项目来源
 
-- **分辨率自适应**：针对 SD/HD/4K 内容应用优化配置
-- **HDR 处理**：根据 HDR 信息自动适配输出参数
-- **设备状态**：根据窗口状态及音频配置进行参数调整
+```
+gaoxing64/MPV-lazy-full (v2.0.0)
+    └── hooke007/MPV_lazy (原始 MPV-lazy)
+    └── dyphire/mpv-config (配置参考)
+    └── hooke007/mpv_PlayKit (着色器)
+    └── LumeCraft-Labs/K7sfunc (VapourSynth 脚本)
+```
 
-## 界面预览
+## License
 
-![播放界面预览1](https://cdn.jsdelivr.net/gh/dyphire/PicGo/img/2023/11/03/image-20231103224421000.png)
-
-![播放界面预览2](https://cdn.jsdelivr.net/gh/dyphire/PicGo/img/2023/11/03/image-20231103224540075.png)
-
-![播放界面预览3](https://cdn.jsdelivr.net/gh/dyphire/PicGo/img/2023/11/03/image-20231103224557019.png)
-
-## 技术参考
-
-- [mpv 官方手册](https://mpv.io/manual/master/)
-- [hooke007 配置手册](https://hooke007.github.io/mpv-lazy/mpv.html)
-
-## 许可证说明
-
-- 本项目主要整合了多种开源脚本和着色器，主要来源于 [hooke007/mpv_PlayKit](https://github.com/hooke007/mpv_PlayKit) 仓库，以及 [LumeCraft-Labs/K7sfunc](https://github.com/LumeCraft-Labs/K7sfunc) 仓库
-- 每个组件的许可证信息通常在其源文件内部注明
-- 项目整体按照原作者 dyphire 的许可证约定执行
-
-## 原始项目参考
-
-本项目 fork 自 [gaoxing64/MPV-lazy-full](https://github.com/gaoxing64/MPV-lazy-full) v2.0.0，在其基础上进行了个性化定制。
-
-**上游项目**：[hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) — MPV-lazy 原始项目
-**配置文件参考**：[dyphire/mpv-config](https://github.com/dyphire/mpv-config)
+本项目各组件的许可证见各自源文件。原始项目按原作者 dyphire 的许可证约定执行。
