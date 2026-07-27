@@ -113,3 +113,14 @@ $RECYCLE.BIN/
 *.swo
 *~
 *.bak
+
+# --- 本地配置 (机器特定) ---
+/settings.xml
+
+# --- 打包临时文件 ---
+/build/
+/release/
+/tmp/
+*.7z
+*.zip
+*.rar
