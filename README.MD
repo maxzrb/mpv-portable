@@ -128,5 +128,7 @@ portable_config/
 
 ## 原始项目参考
 
-**原作者**：dyphire
-**原仓库**：[dyphire/mpv-config](https://github.com/dyphire/mpv-config)
+本项目 fork 自 [gaoxing64/MPV-lazy-full](https://github.com/gaoxing64/MPV-lazy-full) v2.0.0，在其基础上进行了个性化定制。
+
+**上游项目**：[hooke007/MPV_lazy](https://github.com/hooke007/MPV_lazy) — MPV-lazy 原始项目
+**配置文件参考**：[dyphire/mpv-config](https://github.com/dyphire/mpv-config)
