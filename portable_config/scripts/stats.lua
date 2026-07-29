@@ -1741,6 +1741,11 @@ process_key_binding = function(oneshot)
         print_page(curr_page)
         display_timer:resume()
     end
+
+    -- 向其他脚本公布常驻统计 OSD 的真实开关状态。
+    mp.set_property_bool(
+        "user-data/stats/toggled",
+        display_timer:is_enabled() and not display_timer.oneshot)
 end
 
 
@@ -1759,6 +1764,7 @@ display_timer = mp.add_periodic_timer(o.duration,
         end
     end)
 display_timer:kill()
+mp.set_property_bool("user-data/stats/toggled", false)
 
 -- Single invocation key binding
 mp.add_key_binding(nil, "display-stats", function() process_key_binding(true) end,

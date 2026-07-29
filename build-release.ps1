@@ -1,12 +1,14 @@
 
 <#
 .SYNOPSIS
-    MPV Portable Release Builder - 3-package build script
+    MPV Portable Release Builder - numbered 3-package public build script
 .DESCRIPTION
-    Creates three packages:
-      - mpv-config-vX.Y.Z.7z     Config files (scripts/settings/fonts/OSC)
-      - mpv-base-vX.Y.Z.7z       Core player + Config = ready to play
-      - mpv-extras-vX.Y.Z.7z     Shaders + VapourSynth + AI + Tools (split volumes)
+    Creates three numbered public packages in safe overwrite order:
+      - 01-mpv-base-vX.Y.Z.7z     Core player + Config = ready to play
+      - 02-mpv-config-vX.Y.Z.7z   Config files (scripts/settings/fonts/OSC)
+      - 03-mpv-extras-vX.Y.Z.7z   Shaders + VapourSynth + AI + Tools (split volumes)
+    The optional private research package is generated separately as:
+      - 04-mpv-lsfg-research-private.7z
 .PARAMETER Version
     Version number, e.g. "1.0.0"
 .PARAMETER SkipExtras
@@ -43,10 +45,10 @@ $null = New-Item -ItemType Directory -Force (Join-Path $RootDir $OutputDir)
 $BuildDir = Join-Path $RootDir "build"
 if (Test-Path $BuildDir) { Remove-Item -Recurse -Force $BuildDir }
 
-# Package names
-$ConfigName = "mpv-config-v${Version}"
-$BaseName   = "mpv-base-v${Version}"
-$ExtrasName = "mpv-extras-v${Version}"
+# 包名编号同时表示解压覆盖顺序。
+$BaseName   = "01-mpv-base-v${Version}"
+$ConfigName = "02-mpv-config-v${Version}"
+$ExtrasName = "03-mpv-extras-v${Version}"
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Cyan
@@ -127,21 +129,9 @@ function Copy-IfExists {
 }
 
 # ============================================================
-# 1. Config Package
+# 1. Base Package
 # ============================================================
-Write-Host "--- [1/3] Config Package ---" -ForegroundColor Magenta
-$ConfigBuild = Join-Path $BuildDir $ConfigName
-$null = New-Item -ItemType Directory -Force $ConfigBuild
-Invoke-CopyConfig $ConfigBuild
-# Project files
-Copy-IfExists "README.MD" $ConfigBuild
-Copy-IfExists ".gitignore" $ConfigBuild
-Invoke-Pack $ConfigName $ConfigBuild "Config (scripts+settings+fonts+OSC)"
-
-# ============================================================
-# 2. Base Package
-# ============================================================
-Write-Host "--- [2/3] Base Package ---" -ForegroundColor Magenta
+Write-Host "--- [1/3] Base Package ---" -ForegroundColor Magenta
 $BaseBuild = Join-Path $BuildDir $BaseName
 $null = New-Item -ItemType Directory -Force $BaseBuild
 
@@ -189,6 +179,18 @@ Copy-IfExists "README.MD" $BaseBuild
 Copy-IfExists ".gitignore" $BaseBuild
 
 Invoke-Pack $BaseName $BaseBuild "Base (core player + runtime + config)"
+
+# ============================================================
+# 2. Config Package
+# ============================================================
+Write-Host "--- [2/3] Config Package ---" -ForegroundColor Magenta
+$ConfigBuild = Join-Path $BuildDir $ConfigName
+$null = New-Item -ItemType Directory -Force $ConfigBuild
+Invoke-CopyConfig $ConfigBuild
+# Project files
+Copy-IfExists "README.MD" $ConfigBuild
+Copy-IfExists ".gitignore" $ConfigBuild
+Invoke-Pack $ConfigName $ConfigBuild "Config (scripts+settings+fonts+OSC)"
 
 # ============================================================
 # 3. Extras Package
@@ -255,13 +257,20 @@ if (-not $SkipExtras) {
         Copy-IfExists $tool $ExtrasBuild
     }
 
-    # Readme for extras
+    # Extras 包内说明同时保留完整的覆盖顺序，避免用户只下载分卷时漏看根 README。
     $extrasReadme = Join-Path $ExtrasBuild "EXTRAS-README.txt"
-    @"
-MPV Portable Extras v${Version}
-==============================
-Extract to the same directory as the Base package
-for the complete MPV experience.
+@"
+MPV Portable 03 Extras v${Version}
+==================================
+
+安装与覆盖顺序：
+  01. 01-mpv-base-vX.Y.Z.7z
+  02. 02-mpv-config-vX.Y.Z.7z（同版本 Base 已含 Config，可跳过）
+  03. 03-mpv-extras-vX.Y.Z.7z.001（本包；将 .002 放在同目录，只解压 .001）
+  04. 04-mpv-lsfg-research-private.7z（可选，必须最后覆盖）
+
+请将本包解压到 Base 所在目录。以后如果重新覆盖 Base 或 Config，
+还需要再次解压 04 LSFG 私有包。
 
 Contains:
 - Shaders (portable_config/shaders/)    129 MB

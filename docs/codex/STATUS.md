@@ -5,13 +5,13 @@
 | 项目 | 状态 |
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
-| **分支** | `master` |
+| **分支** | `research/lsfg-windows`（仅本地研究，未推送） |
 | **最新发布提交** | `9735802`（tag: `v1.1.1`） |
-| **工作区** | v1.1.1 已发布，Release 资产与远程摘要已核验 |
+| **工作区** | LSFG 遥测已同步 Tab stats；四类包已按 01～04 覆盖顺序编号，尚未提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.1.1（已发布） |
-| **上次操作** | 发布并核验 GitHub Release v1.1.1 |
-| **自定义脚本** | portable_config/scripts/stats.lua (覆盖内置) |
+| **上次操作** | 为 Base、Config、Extras 和 LSFG 私有包增加覆盖顺序编号及 README 说明 |
+| **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
 
@@ -43,6 +43,11 @@ c:\Program portable\mpv2\
 - [x] 去掉 VapourSynth 菜单中间层，让补帧、超分、降噪按用途直达
 - [x] 将完整着色器库按用途重组，同时保留按原算法家族查找的专家库
 - [x] 允许补帧、超分、降噪同时启用，并提供竖排状态 OSD 与直属清空入口
+- [x] 将 LSFG 2×/3×/4×测试入口接入补帧菜单，并支持按当前进度重启切换
+- [x] 为 LSFG 增加 Layer 实时帧率遥测与可切换 OSD 覆盖层
+- [x] 为视频滤镜补齐直属状态查看和完整清空入口
+- [x] 让 LSFG 遥测跟随 Tab 常驻 stats OSD，并移至屏幕右上角
+- [x] 将四类安装包按 01 Base → 02 Config → 03 Extras → 04 LSFG 编号并写明覆盖顺序
 
 ---
 
@@ -301,3 +306,129 @@ c:\Program portable\mpv2\
   - `mpv-base-v1.1.1.7z`：78,173,427 字节，GitHub SHA-256 与本地一致。
 - **extras**: 着色器、VapourSynth、模型和工具未变化，因此继续复用 v1.0.0 extras。
 - **Git 状态**: 发布提交、分支和标签均已同步；本条 HandShake 收尾记录提交后应保持工作树干净。
+
+### 2026-07-29 23:22 会话: Windows 原生 LSFG 接入研究
+
+- **研究分支**: 已从当前版本建立本地 `research/lsfg-windows`，没有推送公开仓库。
+- **素材核验**:
+  - 用户提供的 Lossless Scaling 3.2.2 目录共 440 个文件、183,809,856 字节。
+  - `Lossless.dll` 含 300 个 `RT_RCDATA` 资源；lsfg-vk 需要的 304–400 号 SPIR-V 模型资源全部存在。
+  - 运行方案仅将 `Lossless.dll` 当作 PE 资源容器读取，不加载或执行其中的专有代码。
+- **Windows 移植**:
+  - 导入 `PancakeTAS/lsfg-vk` develop 提交 `8b0da2661c6f3473a7fccc8ba643880050e71642`。
+  - 将 Linux 文件描述符共享路径改造为 Win32 `HANDLE`、`OPAQUE_WIN32`、外部内存与外部时间线信号量。
+  - 增加 Windows Vulkan Loader、进程识别、便携路径、符号导出和 MinGW 构建支持。
+  - 下载的 w64devkit 2.9.0、CMake 4.4.1、Ninja 1.13.2 均通过发布方 SHA-256 校验。
+- **运行验证**:
+  - 生成的 `lsfg-vk-layer.dll` 只依赖 Windows 系统 DLL，并正确导出 `vkNegotiateLoaderLayerInterfaceVersion`。
+  - 启动器按绝对 DLL 路径动态生成 Vulkan 清单，不写注册表；默认隔离 OBS/Steam 隐式层。
+  - mpv 使用 Vulkan/WinVK 播放 30 帧合成视频，Layer 报告 `frame generation context ready (320x240, 2x)`，进程退出码为 0。
+  - 因为 Layer 位于最终交换链，生成帧会包含字幕、OSD 和菜单；本方案不需要重新构建 mpv。
+- **私有研究包**:
+  - `release/mpv-lsfg-research-private.7z`，51,938,897 字节。
+  - SHA-256：`7C73A5EA24A9952ED44C77598634B7757435144D4C6B5444800F1C82C6E85B5E`。
+  - 包含完整 Lossless Scaling 目录、运行 Layer、启动器和对应 GPL 研究源码；7z 完整性检查通过。
+- **隔离措施**: `.gitignore` 已排除根目录 `Lossless Scaling/` 和 `lsfg-vk/`，不会误纳入公开提交。
+- **Git 状态**: 本次研究改动尚未提交、未推送，也没有创建或更新公开 Release。
+
+### 2026-07-30 00:02 会话: 将 LSFG 接入 mpv 补帧菜单
+
+- **菜单入口**:
+  - 在“视频滤镜 → 补帧”直属加入 LSFG 2×质量、2×性能、3×质量、4×质量和状态查看。
+  - LSFG 启用时，对 mpv 轻量插值及所有 VapourSynth 补帧项返回 `disabled` 状态，避免双重补帧。
+  - 原“关闭补帧”现在同时识别 LSFG；处于 LSFG 模式时会重启回普通 mpv。
+- **续播控制**:
+  - 新增 `portable_config/scripts/lsfg_control.lua`，保存当前时间、暂停状态和播放列表后启动新进程。
+  - 切换到 LSFG 前移除 `@quality-memc` 并关闭 mpv 插值，防止与 RIFE/SVP 叠加。
+  - 启动参数通过忽略目录中的临时 JSON 文件传递，规避 Windows PowerShell 原生数组参数只能绑定首项的问题。
+  - `start-mpv-lsfg.ps1` 新增 `-Disable` 和 `-MpvArgumentsFile`，并兼容 Windows PowerShell 5.1 对无 BOM UTF-8 脚本的解析。
+- **状态显示**:
+  - `quality_status.lua` 增加 LSFG 启用状态、倍率及质量/性能模式。
+  - `lsfg_control.lua` 将当前模式写入 `user-data/lsfg/*`，供动态菜单实时勾选。
+- **验证结果**:
+  - 普通模式菜单显示完整 LSFG 入口；LSFG 2×质量模式正确勾选，mpv 插值和 RIFE 菜单正确禁用。
+  - 启动器烟雾测试再次报告 `frame generation context ready (320x240, 2x)`，退出码为 0。
+  - 普通 mpv → LSFG：菜单消息成功，旧进程退出，新进程同时带 `--gpu-api=vulkan` 和 `--start` 续播参数。
+  - LSFG → 普通 mpv：旧进程退出，新进程带 `--start` 且不再包含 Vulkan 强制参数。
+  - 所有测试创建的 mpv 进程均已清理。
+- **私有包更新**:
+  - 包内新增 `portable_config/input.conf`、`lsfg_control.lua` 和新版 `quality_status.lua`。
+  - `release/mpv-lsfg-research-private.7z`：51,957,616 字节。
+  - SHA-256：`69E91F8501A5E1891D8F0E96D6981B6FD694E1BAE20D4151CC0096A800AC97B1`；7z 完整性检查通过。
+- **Git 状态**: 本地 `research/lsfg-windows` 研究改动尚未提交、未推送，没有更新公开 Release。
+
+### 2026-07-30 00:25 会话: LSFG 实时帧率覆盖层与滤镜管理
+
+- **视频滤镜直属入口**:
+  - “视频滤镜”一级菜单前两项现在与着色器一致，分别为“查看当前启用项 · Ctrl+Alt+0”和“清空全部滤镜 · Ctrl+`”。
+  - 普通模式下，清空会执行完整 `vf clr` 并关闭 mpv 插值。
+  - LSFG 模式下，清空会退出 Layer，携带 `--vf-clr`、`--interpolation=no` 和当前 `--start` 位置重启普通 mpv。
+- **Layer 实时遥测**:
+  - 在 `Swapchain::present` 成功完成全部生成帧与原始帧的 `QueuePresentKHR` 后分别计数。
+  - 每 0.5 秒写入 `lsfg-vk/telemetry.json`：输入 Present FPS、输出 Present FPS、倍率、性能模式和更新时间。
+  - `start-mpv-lsfg.ps1` 管理 `LSFGVK_TELEMETRY_PATH`，启动或关闭时清理旧遥测，避免显示过期数据。
+- **OSD 覆盖层**:
+  - `lsfg_control.lua` 每 0.25 秒读取 Layer 遥测，通过独立 ASS OSD 在左上角显示倍率、模式、原始 FPS 和实时 FPS。
+  - LSFG 启用时默认显示，可在“视频滤镜 → 补帧 → LSFG 帧率覆盖层”开关。
+  - 当前画质状态 OSD 也会显示“原始 FPS → 实时 FPS”。
+  - 采用 mpv ASS OSD 而非在 Vulkan Layer 内额外实现字体渲染，避免修改交换链图像管线；帧率数据仍来自 Layer 的真实提交计数。
+- **验证结果**:
+  - 30 fps 合成视频前台烟雾测试得到 `30.01 → 60.01 FPS`，倍率准确为 2×。
+  - Lua 实际读取遥测成功，`user-data/lsfg/input-fps`、`output-fps` 与覆盖层勾选状态均有效。
+  - 已用窗口截图确认覆盖层实际渲染；后台隐藏窗口被 DWM 节流时仍会如实显示较低 Present 速率。
+  - 普通模式测试：滤镜数量从 1 变为 0，`interpolation=false`。
+  - LSFG 模式测试：旧进程退出，新普通进程不含 Vulkan 强制参数，并含 `--vf-clr`、`--interpolation=no`。
+  - Windows Layer 重新编译成功；DLL SHA-256 为 `26D14A5D9953DCCB62B8D21683CC4C46511ACA5669F84BD99F16BF23FE51E9A0`。
+- **统计边界**: “实时 FPS”代表 Layer 成功提交到 Vulkan 交换链的 Present 速率，不保证等同于显示器面板最终扫描率；最小化或后台窗口可能受 DWM 节流。
+- **私有包更新**:
+  - `release/mpv-lsfg-research-private.7z`：52,035,917 字节。
+  - SHA-256：`3B4A08F24F47885960A259ED71779FBA98DAE1272231FA026ACDAD840E568F8C`；7z 完整性检查通过。
+- **Git 状态**: 本地 `research/lsfg-windows` 研究改动尚未提交、未推送，没有更新公开 Release。
+
+### 2026-07-30 00:39 会话: 遥测跟随 Tab 常驻 stats OSD
+
+- **有效按键确认**:
+  - `input.conf` 中低优先级的 Tab 是文件浏览器入口，但被 `inputevent.lua` 的增强按键覆盖。
+  - 实际生效的是 `inputevent_key.conf`：Tab 单击调用 `stats/display-stats-toggle`，等同原大写 `I` 的常驻统计功能。
+  - 曾为排查临时改动的文件浏览器 Tab 行已恢复，没有改变用户原有按键语义。
+- **同步实现**:
+  - 自定义 `stats.lua` 在常驻统计开启/关闭后写入 `user-data/stats/toggled`。
+  - `lsfg_control.lua` 观察该属性：stats 关闭时遥测隐藏，Tab 或大写 `I` 开启时显示。
+  - stats 自身通过 Tab、I 或 Esc 关闭时，状态都会同步更新，不依赖盲目翻转计数。
+- **布局**: ASS 覆盖层从左上角改到右上角（右对齐、距边 24 px），避免遮挡左侧 stats OSD。
+- **验证**:
+  - 初始状态：stats=false、LSFG overlay=false。
+  - 第一次真实 `keypress TAB`：stats=true、overlay=true。
+  - 第二次真实 `keypress TAB`：stats=false、overlay=false。
+  - 窗口截图确认左侧 stats 与右侧 LSFG `30.1 → 60.1 FPS` 同屏且不重叠。
+  - 所有自动化测试 mpv 进程均已清理。
+- **私有包更新**:
+  - 打包脚本新增自定义 `portable_config/scripts/stats.lua`，确保状态同步代码随包交付。
+  - `release/mpv-lsfg-research-private.7z`：52,051,306 字节。
+  - SHA-256：`8C9BA7CA18B1BA40FBEF89BF0B0AC44490EFD752C9220DAF8BE81CB8EF512C3E`；7z 完整性检查通过。
+- **Git 状态**: 本地 `research/lsfg-windows` 改动尚未提交、未推送，没有更新公开 Release。
+
+### 2026-07-30 00:56 会话: 安装包覆盖顺序编号
+
+- **编号规则**:
+  - `01-mpv-base-vX.Y.Z.7z`
+  - `02-mpv-config-vX.Y.Z.7z`
+  - `03-mpv-extras-vX.Y.Z.7z.001/.002`
+  - `04-mpv-lsfg-research-private.7z`
+- **覆盖约定**:
+  - 四类包全部安装时按 01 → 02 → 03 → 04 解压覆盖。
+  - 同版本 Base 已包含 Config，因此 02 可跳过；如果安装，则仍按编号执行。
+  - LSFG 私有包必须最后覆盖；以后更新 Base 或 Config 后需要再次应用 04。
+- **脚本调整**:
+  - `build-release.ps1` 的实际生成顺序改为 Base → Config → Extras，并为三个公开包加编号。
+  - `build-lsfg-research.ps1` 将私有包更名为 `04-mpv-lsfg-research-private.7z`。
+  - 根 `README.MD`、Extras 包内说明和私有包内说明均写入完整安装顺序。
+- **验证**:
+  - 两个 PowerShell 打包脚本通过解析器语法检查。
+  - 临时实际生成 01 Base、02 Config 和 04 私有包，三个归档完整性测试通过。
+  - 从三个归档中实际解出 README，均确认包含 01～04 顺序；03 Extras 因约 2.6 GB 未重新压缩，已静态核对其名称与生成说明。
+  - `git diff --check` 通过，仅显示仓库现有的 autocrlf 提示。
+- **临时文件**:
+  - 执行策略阻止自动递归清理，测试归档仍位于 `tmp/package-order-validation/`。
+  - 解出的 README 校验文件仍位于 `tmp/package-order-readme-check/`；两目录均为可删除的临时产物并已被 Git 忽略。
+- **Git 状态**: 改动尚未提交、未推送，没有重新生成正式 Release 或更新公开 GitHub Release。
