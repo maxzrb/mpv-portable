@@ -7,8 +7,8 @@
       - 01-mpv-base-vX.Y.Z.7z     Core player + Config = ready to play
       - 02-mpv-config-vX.Y.Z.7z   Config files (scripts/settings/fonts/OSC)
       - 03-mpv-extras-vX.Y.Z.7z   Shaders + VapourSynth + AI + Tools (split volumes)
-    The optional private research package is generated separately as:
-      - 04-mpv-lsfg-research-private.7z
+    The optional public LSFG add-on is generated separately as:
+      - 04-mpv-lsfg-addon-vX.Y.Z.7z
 .PARAMETER Version
     Version number, e.g. "1.0.0"
 .PARAMETER SkipExtras
@@ -128,6 +128,31 @@ function Copy-IfExists {
     if (Test-Path $src) { Copy-Item $src $DestDir }
 }
 
+function Remove-GeneratedArtifacts {
+    param([string]$TargetRoot)
+
+    # 只清理明确由运行/编译过程生成的文件，不删除 Python 包自带的 tests 或源码。
+    $cacheDirs = @(Get-ChildItem -LiteralPath $TargetRoot -Recurse -Directory -Force `
+        -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -in @('__pycache__', '.pytest_cache', '.mypy_cache')
+        } | Sort-Object FullName -Descending)
+    foreach ($dir in $cacheDirs) {
+        Remove-Item -LiteralPath $dir.FullName -Recurse -Force
+    }
+
+    $generatedExtensions = @(
+        '.pyc', '.pyo', '.log', '.tmp', '.bak',
+        '.pdb', '.obj', '.ilk', '.dmp'
+    )
+    $generatedFiles = @(Get-ChildItem -LiteralPath $TargetRoot -Recurse -File -Force `
+        -ErrorAction SilentlyContinue | Where-Object {
+            $_.Extension.ToLowerInvariant() -in $generatedExtensions
+        })
+    foreach ($file in $generatedFiles) {
+        Remove-Item -LiteralPath $file.FullName -Force
+    }
+}
+
 # ============================================================
 # 1. Base Package
 # ============================================================
@@ -178,6 +203,7 @@ Invoke-CopyTo $BaseBuild @("7z.exe", "7z.dll", "7z")
 Copy-IfExists "README.MD" $BaseBuild
 Copy-IfExists ".gitignore" $BaseBuild
 
+Remove-GeneratedArtifacts $BaseBuild
 Invoke-Pack $BaseName $BaseBuild "Base (core player + runtime + config)"
 
 # ============================================================
@@ -190,6 +216,7 @@ Invoke-CopyConfig $ConfigBuild
 # Project files
 Copy-IfExists "README.MD" $ConfigBuild
 Copy-IfExists ".gitignore" $ConfigBuild
+Remove-GeneratedArtifacts $ConfigBuild
 Invoke-Pack $ConfigName $ConfigBuild "Config (scripts+settings+fonts+OSC)"
 
 # ============================================================
@@ -267,10 +294,10 @@ MPV Portable 03 Extras v${Version}
   01. 01-mpv-base-vX.Y.Z.7z
   02. 02-mpv-config-vX.Y.Z.7z（同版本 Base 已含 Config，可跳过）
   03. 03-mpv-extras-vX.Y.Z.7z.001（本包；将 .002 放在同目录，只解压 .001）
-  04. 04-mpv-lsfg-research-private.7z（可选，必须最后覆盖）
+  04. 04-mpv-lsfg-addon-v${Version}.7z（可选公开扩展包，建议最后安装）
 
-请将本包解压到 Base 所在目录。以后如果重新覆盖 Base 或 Config，
-还需要再次解压 04 LSFG 私有包。
+请将本包解压到 Base 所在目录。LSFG 菜单与状态脚本由 Base/Config 管理，
+04 只增加运行文件和源码；以后单独更新 Config 不需要重新解压 04。
 
 Contains:
 - Shaders (portable_config/shaders/)    129 MB
@@ -283,6 +310,8 @@ Contains:
 Note: Faster-Whisper-XXL/ folder is empty.
 Download the Faster-Whisper-XXL model separately for AI subtitles.
 "@ | Set-Content $extrasReadme -Encoding UTF8
+
+    Remove-GeneratedArtifacts $ExtrasBuild
 
     # Extras uses split volumes due to size
     Invoke-Pack $ExtrasName $ExtrasBuild "Extras (shaders + VS + AI + tools)" -Split
@@ -304,7 +333,12 @@ Write-Host "===============================================" -ForegroundColor Gr
 Write-Host "  Build Complete!" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green
 Write-Host ""
-Get-ChildItem (Join-Path $OutputDir "*.7z*") | ForEach-Object {
+$currentArchives = @(
+    Get-ChildItem -Path (Join-Path $OutputDir "$BaseName.7z*") -ErrorAction Ignore
+    Get-ChildItem -Path (Join-Path $OutputDir "$ConfigName.7z*") -ErrorAction Ignore
+    Get-ChildItem -Path (Join-Path $OutputDir "$ExtrasName.7z*") -ErrorAction Ignore
+)
+$currentArchives | Sort-Object Name -Unique | ForEach-Object {
     $sizeMB = [math]::Round($_.Length/1MB, 1)
     Write-Host "  $($_.Name)  (${sizeMB} MB)" -ForegroundColor White
 }

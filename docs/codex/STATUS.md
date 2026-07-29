@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已本地合并 LSFG 研究分支，尚未推送） |
 | **最新发布提交** | `45c2716`（tag: `v1.1.1`） |
-| **工作区** | LSFG Windows Layer、菜单、遥测与四包编号均已合并到本地 `master` |
+| **工作区** | 已生成并核验 v1.2.0 四类公开包及个人私用全量包，打包脚本调整尚未提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.1.1（已发布） |
-| **上次操作** | 验收后将 `research/lsfg-windows` 合并到本地 `master` |
+| **项目版本** | v1.2.0（本地已打包，待发布） |
+| **上次操作** | 清理打包废料，统一版本号与覆盖顺序，并生成个人私用全量包 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -48,10 +48,23 @@ c:\Program portable\mpv2\
 - [x] 为视频滤镜补齐直属状态查看和完整清空入口
 - [x] 让 LSFG 遥测跟随 Tab 常驻 stats OSD，并移至屏幕右上角
 - [x] 将四类安装包按 01 Base → 02 Config → 03 Extras → 04 LSFG 编号并写明覆盖顺序
+- [x] 将第 04 包改为零 Steam 文件的公开扩展包，仅要求用户自备 `Lossless.dll`
+- [x] 统一生成 v1.2.0 四类公开包和个人私用全量包，并完成内容、交叉和完整性审计
 
 ---
 
 ## 会话日志
+
+### 2026-07-30 会话: 统一 v1.2.0 打包与归档审计
+
+- 四类公开包统一命名为 `01-mpv-base-v1.2.0.7z`、`02-mpv-config-v1.2.0.7z`、`03-mpv-extras-v1.2.0.7z.001/.002`、`04-mpv-lsfg-addon-v1.2.0.7z`。
+- 新增 `mpv-full-private-v1.2.0.7z`，按 01 → 02 → 03 → 04 顺序合并，并只额外加入个人自备的 `Lossless.dll`。
+- 打包门禁会排除缓存、日志、临时文件和调试产物；Extras 清除了 121 个 `__pycache__` 目录、1321 个生成文件，约 21.9 MiB。
+- 未发现旧 Release、`build`、`tmp`、`.git` 或其他归档被意外套入新包。
+- Config 与 Base 的 257 个相同文件属于更新包设计；LSFG 和 Extras 与 Base/Config 均无路径重叠。
+- 六个实际归档文件均通过 `7z t`；个人全量包与四个公开包的合并结果一致，仅按设计移除公开源码/占位说明并加入 `Lossless.dll` 和私用说明。
+- 旧 v1.1.1 输出已可恢复地移至 `tmp/release-backup-before-v1.2.0/`，没有删除。
+- 新增统一入口 `build-all-packages.ps1` 和个人包脚本 `build-full-private.ps1`；当前尚未提交、推送或上传 Release。
 
 ### 2026-07-27 会话 2: 汉化 stats.lua OSD 统计界面
 
@@ -458,3 +471,30 @@ c:\Program portable\mpv2\
   - 没有创建新版本、Tag 或更新公开 GitHub Release。
   - 正式编号包尚未重新生成；此前的临时验证目录仍在 `tmp/` 且被 Git 忽略。
 - **Git 状态**: 本收尾记录提交后，本地 `master` 预计领先 `origin/master` 3 个提交，工作树应保持干净。
+
+### 2026-07-30 01:15 会话: 用公开 LSFG 扩展包取代私有包
+
+- **Steam DLL 审计**:
+  - 本机 Lossless Scaling 目录共有 433 个 DLL；旧私有归档共有 438 个 DLL 条目，额外 5 个是 Layer 运行/研究构建副本。
+  - 其中 38 个为 Lossless Scaling 自有文件：`Lossless.dll`、`LosslessScaling.dll` 及 36 个语言目录中的 `LosslessScaling.resources.dll`。
+  - 其余 395 个主要是 .NET、WPF、WinRT 等随 Steam 应用携带的第三方运行库；即使其中部分可能有独立再分发条款，本项目也不需要它们，因此统一排除。
+  - mpv LSFG 实际只读取 `Lossless.dll` 的 `RT_RCDATA` 模型资源；用户只需从正版 Steam 安装自行复制这一文件。
+- **公开包设计**:
+  - 删除 `build-lsfg-research.ps1`，新增 `build-lsfg-public.ps1`。
+  - 第 04 包更名为 `04-mpv-lsfg-addon.7z`，可公开分发。
+  - 包内只含一个 DLL：本项目构建的 GPL `lsfg-vk-layer.dll`。
+  - 包内不含 Steam DLL、EXE、模型资源或完整 Lossless Scaling 目录；只提供一个文本占位说明。
+  - 随 Layer 二进制附带 `research/lsfg-vk-win` 对应 GPL 源码，但剔除本机 build 目录和重复 DLL。
+  - 打包脚本设有强制门禁：额外 DLL、任意 EXE 或占位目录中的其他文件都会使构建失败。
+- **文档调整**:
+  - 根 `README.MD` 与 Extras 包内说明均将 04 改为公开扩展包。
+  - 明确安装者只需将 Steam 安装根目录的 `Lossless.dll` 放到 `<mpv根目录>\Lossless Scaling\Lossless.dll`。
+  - 明确不需要 `LosslessScaling.dll`、语言资源 DLL、.NET/WPF DLL 或任何 EXE。
+- **生成结果**:
+  - `release/04-mpv-lsfg-addon.7z`：2,002,853 字节。
+  - SHA-256：`641DB5E204F701BE6C4BBF117321DB59080A8E22C8D6DADEAB7A4821CD88A9E9`。
+  - 7-Zip 完整性检查通过；归档共 190 个文件，只含 1 个 DLL、0 个 EXE、0 个 Steam 二进制、0 个研究 build 路径。
+- **旧包处理**:
+  - 旧 `release/mpv-lsfg-research-private.7z` 已移出 Release 目录。
+  - 为保持可恢复性，旧包暂存于被 Git 忽略的 `tmp/private-archive-backup/mpv-lsfg-research-private.7z`。
+- **Git 状态**: 当前位于本地 `master`，原合并链领先 `origin/master` 3 个提交；本次公开包脚本与 README 调整尚未提交、未推送，也未上传 GitHub Release。
