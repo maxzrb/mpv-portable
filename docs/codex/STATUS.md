@@ -5,12 +5,12 @@
 | 项目 | 状态 |
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
-| **分支** | `master`（已本地合并 LSFG 研究分支，尚未推送） |
-| **最新发布提交** | `45c2716`（tag: `v1.1.1`） |
-| **工作区** | 已生成并核验 v1.2.0 四类公开包及个人私用全量包，打包脚本调整尚未提交 |
+| **分支** | `master`（已与 `origin/master` 同步） |
+| **最新发布提交** | `fce95b3`（tag: `v1.2.0`） |
+| **工作区** | v1.2.0 代码、README、Tag 和五个公开 Release 资产均已同步，工作树应保持干净 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.2.0（本地已打包，待发布） |
-| **上次操作** | 清理打包废料，统一版本号与覆盖顺序，并生成个人私用全量包 |
+| **项目版本** | v1.2.0（已发布） |
+| **上次操作** | 推送 `master`，创建 `v1.2.0` 正式 Release 并核验远端资产 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -498,3 +498,22 @@ c:\Program portable\mpv2\
   - 旧 `release/mpv-lsfg-research-private.7z` 已移出 Release 目录。
   - 为保持可恢复性，旧包暂存于被 Git 忽略的 `tmp/private-archive-backup/mpv-lsfg-research-private.7z`。
 - **Git 状态**: 当前位于本地 `master`，原合并链领先 `origin/master` 3 个提交；本次公开包脚本与 README 调整尚未提交、未推送，也未上传 GitHub Release。
+
+### 2026-07-30 02:21 会话: 发布 v1.2.0
+
+- **提交与同步**:
+  - 打包体系、公开 LSFG 扩展包和远端 README 更新提交为 `fce95b3 release: 准备 v1.2.0 LSFG 扩展包`。
+  - 本地 `master` 已推送到 `origin/master`；`v1.2.0` Tag 与远端主分支均指向 `fce95b3a60e2980b4be275810ef5f113777f4599`。
+- **Release**:
+  - 正式 Release：https://github.com/maxzrb/mpv-portable/releases/tag/v1.2.0
+  - Release 状态为正式发布，非草稿、非预发布。
+  - 已上传 01 Base、02 Config、03 Extras 两个分卷和 04 LSFG 共五个公开资产。
+  - GitHub 返回的五个资产大小与 SHA-256 均和本地文件一致。
+- **公开边界**:
+  - 04 包通过内容门禁，不含 `portable_config`、Steam DLL、EXE 或专有模型。
+  - `mpv-full-private-v1.2.0.7z` 含用户自备 `Lossless.dll`，只保留本地，没有上传 Release。
+  - 远端 README 已确认包含新版 01～04 安装顺序、04 不覆盖 Config/Extras，以及个人包禁止公开上传的说明。
+- **验证**:
+  - 01、02、03 `.001/.002` 分卷、04 和个人全量包均通过正确的 7-Zip 完整性测试。
+  - PowerShell 打包/启动脚本通过解析器检查，`git diff --check` 通过。
+- **Git 状态**: 发布收尾记录提交并推送后，本地 `master` 应与 `origin/master` 一致且工作树干净。
