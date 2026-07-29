@@ -6,10 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master` |
-| **最新提交** | `1b384bc` 调整鼠标菜单绑定并固定 OSD 菜单字号 |
-| **工作区** | 菜单优化已完成最终验证，等待提交 |
+| **最新提交** | `175b4f4` 按用途重组着色器与视频滤镜菜单 |
+| **工作区** | v1.1.0 选择性打包与版本记录等待提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **上次操作** | 完成用途/专家双索引、三类 VS 独立槽及竖排画质状态 OSD |
+| **项目版本** | v1.1.0（待创建 GitHub Release） |
+| **上次操作** | 构建并验证 v1.1.0 配置包与基础包 |
 | **自定义脚本** | portable_config/scripts/stats.lua (覆盖内置) |
 
 ## 环境
@@ -232,3 +233,25 @@ c:\Program portable\mpv2\
   - 仓库附带的 `luajit.exe` 不支持 `-b` 命令，因此 Lua 验证改用 mpv 实际加载完成。
 - **待执行**: 提交并推送本批修改；随后根据三包内容决定 Release 更新范围。
 - **Git 状态**: `master` 领先远程 1 个提交；待提交文件为 `input.conf`、`profiles.conf`、`quality_status.lua` 及 HandShake 记录。
+
+### 2026-07-29 17:56 会话: 提交菜单优化并准备 v1.1.0
+
+- **提交与同步**:
+  - 已提交 `175b4f4 feat: 按用途重组着色器与视频滤镜菜单`。
+  - 已推送到 `origin/master`，本地与远程同步。
+- **Release 范围判断**:
+  - `v1.0.0..HEAD` 只涉及 README、菜单配置、profile、状态脚本和项目记录。
+  - 着色器、VapourSynth、插件、模型、Python 环境及额外工具没有变化。
+  - 决定发布 v1.1.0 的 config 与 base 两包，不重传 extras；v1.0.0 extras 保持兼容。
+- **打包机制**:
+  - 为 `build-release.ps1` 新增 `-SkipExtras` 开关。
+  - 使用 `.\build-release.ps1 -Version '1.1.0' -SkipExtras` 构建。
+- **产物**:
+  - `mpv-config-v1.1.0.7z`：33,817,819 字节；SHA-256 `E44E99294C82C6979163952D6F047EB987C126F05EAD347A1EED767C89ED7C6B`。
+  - `mpv-base-v1.1.0.7z`：78,173,383 字节；SHA-256 `5D34E29B84AFCE34D29E43FFF314C0494F71C11373E116785C4262524B4CC5A6`。
+- **验证**:
+  - 两个 7z 包完整性测试通过。
+  - 两包均包含 `quality_status.lua`，且均未误包含 shaders 或 VS 素材。
+  - 解压基础包后实际启动 mpv，成功加载新脚本、`input.conf` 和 `profiles.conf`。
+  - 解包验证产生的忽略目录 `build/validate-v1.1.0` 仍在本地；自动递归清理被执行环境策略拦截，不影响 Git 或发布包。
+- **待执行**: 提交版本与打包机制，创建并上传 GitHub Release v1.1.0。

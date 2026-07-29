@@ -9,15 +9,22 @@
       - mpv-extras-vX.Y.Z.7z     Shaders + VapourSynth + AI + Tools (split volumes)
 .PARAMETER Version
     Version number, e.g. "1.0.0"
+.PARAMETER SkipExtras
+    Skip the large extras package when shaders, VapourSynth components,
+    Python runtime, and extra tools have not changed.
 .EXAMPLE
     .\build-release.ps1 -Version "1.0.0"
+.EXAMPLE
+    .\build-release.ps1 -Version "1.1.0" -SkipExtras
 #>
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$Version,
 
-    [string]$OutputDir = "release"
+    [string]$OutputDir = "release",
+
+    [switch]$SkipExtras
 )
 
 $ErrorActionPreference = "Stop"
@@ -186,70 +193,71 @@ Invoke-Pack $BaseName $BaseBuild "Base (core player + runtime + config)"
 # ============================================================
 # 3. Extras Package
 # ============================================================
-Write-Host "--- [3/3] Extras Package ---" -ForegroundColor Magenta
-$ExtrasBuild = Join-Path $BuildDir $ExtrasName
-$null = New-Item -ItemType Directory -Force $ExtrasBuild
+if (-not $SkipExtras) {
+    Write-Host "--- [3/3] Extras Package ---" -ForegroundColor Magenta
+    $ExtrasBuild = Join-Path $BuildDir $ExtrasName
+    $null = New-Item -ItemType Directory -Force $ExtrasBuild
 
-# Shaders
-Write-Host "       Copying shaders (~129MB)..." -ForegroundColor Gray
-$shadersSrc = Join-Path $RootDir "portable_config\shaders"
-$shadersDst = Join-Path $ExtrasBuild "portable_config\shaders"
-if (Test-Path $shadersSrc) {
-    $null = New-Item -ItemType Directory -Force $shadersDst
-    Copy-Item -Recurse -Force "$shadersSrc\*" $shadersDst
-}
+    # Shaders
+    Write-Host "       Copying shaders (~129MB)..." -ForegroundColor Gray
+    $shadersSrc = Join-Path $RootDir "portable_config\shaders"
+    $shadersDst = Join-Path $ExtrasBuild "portable_config\shaders"
+    if (Test-Path $shadersSrc) {
+        $null = New-Item -ItemType Directory -Force $shadersDst
+        Copy-Item -Recurse -Force "$shadersSrc\*" $shadersDst
+    }
 
-# VapourSynth scripts
-Write-Host "       Copying VapourSynth scripts..." -ForegroundColor Gray
-$vsScriptsSrc = Join-Path $RootDir "portable_config\vs"
-$vsScriptsDst = Join-Path $ExtrasBuild "portable_config\vs"
-if (Test-Path $vsScriptsSrc) {
-    $null = New-Item -ItemType Directory -Force $vsScriptsDst
-    Copy-Item -Recurse -Force "$vsScriptsSrc\*" $vsScriptsDst
-}
+    # VapourSynth scripts
+    Write-Host "       Copying VapourSynth scripts..." -ForegroundColor Gray
+    $vsScriptsSrc = Join-Path $RootDir "portable_config\vs"
+    $vsScriptsDst = Join-Path $ExtrasBuild "portable_config\vs"
+    if (Test-Path $vsScriptsSrc) {
+        $null = New-Item -ItemType Directory -Force $vsScriptsDst
+        Copy-Item -Recurse -Force "$vsScriptsSrc\*" $vsScriptsDst
+    }
 
-# VapourSynth plugins (the big one)
-Write-Host "       Copying VapourSynth plugins (~4GB)..." -ForegroundColor Gray
-Invoke-CopyTo $ExtrasBuild @("vs-plugins", "vs-coreplugins", "vs-scripts")
+    # VapourSynth plugins (the big one)
+    Write-Host "       Copying VapourSynth plugins (~4GB)..." -ForegroundColor Gray
+    Invoke-CopyTo $ExtrasBuild @("vs-plugins", "vs-coreplugins", "vs-scripts")
 
-# VapourSynth binaries
-Write-Host "       Copying VapourSynth binaries..." -ForegroundColor Gray
-$vsBinaries = @(
-    "VSPipe.exe", "VSScript.dll", "VSScriptPython38.dll",
-    "VSVFW.dll", "AVFS.exe", "pfm-192-vapoursynth-win.exe",
-    "portable.vs"
-)
-foreach ($b in $vsBinaries) { Copy-IfExists $b $ExtrasBuild }
+    # VapourSynth binaries
+    Write-Host "       Copying VapourSynth binaries..." -ForegroundColor Gray
+    $vsBinaries = @(
+        "VSPipe.exe", "VSScript.dll", "VSScriptPython38.dll",
+        "VSVFW.dll", "AVFS.exe", "pfm-192-vapoursynth-win.exe",
+        "portable.vs"
+    )
+    foreach ($b in $vsBinaries) { Copy-IfExists $b $ExtrasBuild }
 
-# VS SDK + tools
-Invoke-CopyTo $ExtrasBuild @("sdk", "vsgenstubs.py", "vsgenstubs4", "vsrepo.py", "MANIFEST.in")
+    # VS SDK + tools
+    Invoke-CopyTo $ExtrasBuild @("sdk", "vsgenstubs.py", "vsgenstubs4", "vsrepo.py", "MANIFEST.in")
 
-# Python runtime
-Write-Host "       Copying Python runtime (~130MB)..." -ForegroundColor Gray
-$pythonFiles = @(
-    "python.exe", "pythonw.exe", "python314.dll",
-    "python314.zip", "python3.dll", "python314._pth", "python.cat"
-)
-foreach ($pf in $pythonFiles) { Copy-IfExists $pf $ExtrasBuild }
-foreach ($pyd in Get-ChildItem "$RootDir\*.pyd" -ErrorAction Ignore) {
-    Copy-Item $pyd.FullName $ExtrasBuild
-}
-Invoke-CopyTo $ExtrasBuild @("Lib", "Scripts")
+    # Python runtime
+    Write-Host "       Copying Python runtime (~130MB)..." -ForegroundColor Gray
+    $pythonFiles = @(
+        "python.exe", "pythonw.exe", "python314.dll",
+        "python314.zip", "python3.dll", "python314._pth", "python.cat"
+    )
+    foreach ($pf in $pythonFiles) { Copy-IfExists $pf $ExtrasBuild }
+    foreach ($pyd in Get-ChildItem "$RootDir\*.pyd" -ErrorAction Ignore) {
+        Copy-Item $pyd.FullName $ExtrasBuild
+    }
+    Invoke-CopyTo $ExtrasBuild @("Lib", "Scripts")
 
-# AI subtitle (empty directory structure)
-Write-Host "       Preserving AI subtitle directory..." -ForegroundColor Gray
-$fasterWhisper = Join-Path $ExtrasBuild "Faster-Whisper-XXL"
-$null = New-Item -ItemType Directory -Force $fasterWhisper
+    # AI subtitle (empty directory structure)
+    Write-Host "       Preserving AI subtitle directory..." -ForegroundColor Gray
+    $fasterWhisper = Join-Path $ExtrasBuild "Faster-Whisper-XXL"
+    $null = New-Item -ItemType Directory -Force $fasterWhisper
 
-# Other tools
-Write-Host "       Copying extra tools..." -ForegroundColor Gray
-foreach ($tool in @("TorrServer-windows-amd64.exe", "alass.exe", "get-pip.py")) {
-    Copy-IfExists $tool $ExtrasBuild
-}
+    # Other tools
+    Write-Host "       Copying extra tools..." -ForegroundColor Gray
+    foreach ($tool in @("TorrServer-windows-amd64.exe", "alass.exe", "get-pip.py")) {
+        Copy-IfExists $tool $ExtrasBuild
+    }
 
-# Readme for extras
-$extrasReadme = Join-Path $ExtrasBuild "EXTRAS-README.txt"
-@"
+    # Readme for extras
+    $extrasReadme = Join-Path $ExtrasBuild "EXTRAS-README.txt"
+    @"
 MPV Portable Extras v${Version}
 ==============================
 Extract to the same directory as the Base package
@@ -267,8 +275,13 @@ Note: Faster-Whisper-XXL/ folder is empty.
 Download the Faster-Whisper-XXL model separately for AI subtitles.
 "@ | Set-Content $extrasReadme -Encoding UTF8
 
-# Extras uses split volumes due to size
-Invoke-Pack $ExtrasName $ExtrasBuild "Extras (shaders + VS + AI + tools)" -Split
+    # Extras uses split volumes due to size
+    Invoke-Pack $ExtrasName $ExtrasBuild "Extras (shaders + VS + AI + tools)" -Split
+} else {
+    Write-Host "--- [3/3] Extras Package (skipped) ---" -ForegroundColor DarkGray
+    Write-Host "       No extras content changed; reuse the previous compatible package." -ForegroundColor DarkGray
+    Write-Host ""
+}
 
 # ============================================================
 # Cleanup
