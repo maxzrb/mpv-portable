@@ -74,6 +74,10 @@
 # --- Faster-Whisper 模型 ---
 /Faster-Whisper-XXL/
 
+# --- 本地 LSFG 研究运行时（不进入公开仓库） ---
+/Lossless Scaling/
+/lsfg-vk/
+
 # --- 运行时缓存和数据 ---
 /portable_config/cache/
 /portable_config/files/animated/

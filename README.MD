@@ -1,32 +1,39 @@
 # MPV Portable
 
-> 个人定制版 MPV 便携播放器，三包发布，按需组装。
+> 个人定制版 MPV 便携播放器，按编号覆盖、按需组装。
 >
 > Fork from [gaoxing64/MPV-lazy-full](https://github.com/gaoxing64/MPV-lazy-full) v2.0.0
 
-## 三个包的关系
+## 四类包的关系
 
 ```
-┌─────────────────────────────────────────────────┐
-│                   mpv-extras                     │
-│   ┌─────────────────────────────────────────┐   │
-│   │              mpv-base                    │   │
-│   │   ┌─────────────────────────────────┐   │   │
-│   │   │         mpv-config              │   │   │
-│   │   │   scripts / settings / fonts    │   │   │
-│   │   └─────────────────────────────────┘   │   │
-│   │   mpv.exe + DLLs + Lua runtime          │   │
-│   └─────────────────────────────────────────┘   │
-│   shaders + VapourSynth + AI + Python + tools    │
-└─────────────────────────────────────────────────┘
+01 Base（核心播放器，已包含 Config）
+   ↓ 可选覆盖
+02 Config（只更新配置；同版本可跳过）
+   ↓ 追加
+03 Extras（着色器、VapourSynth、Python 与工具）
+   ↓ 最后覆盖
+04 LSFG 私有包（本地研究功能，不公开发布）
 ```
 
-| 包 | 解压即用? | 内容 |
-|----|----------|------|
-| **Config** | ✗ (需要 mpv 本体) | 脚本、设置、OSC 主题、字体 |
-| **Base** | ✅ 基本播放 | Config + mpv 核心 + 运行时 |
-| **Extras** | ✗ (需要 Base) | 着色器、VapourSynth 补帧/超分、AI 字幕、工具 |
-| **Base + Extras** | ✅ 完整体验 | 所有功能 |
+| 顺序 | 包 | 解压即用？ | 内容 |
+|------|----|------------|------|
+| **01** | **Base** | ✅ 基本播放 | Config + mpv 核心 + 运行时 |
+| **02** | **Config** | ✗ 需要 mpv 本体 | 脚本、设置、OSC 主题、字体；同版本 Base 已包含，可跳过 |
+| **03** | **Extras** | ✗ 需要 Base | 着色器、VapourSynth 补帧/超分、AI 字幕、工具 |
+| **04** | **LSFG 私有包** | ✗ 需要前三类环境 | LSFG Vulkan Layer、控制脚本和本地研究素材 |
+
+## 安装与覆盖顺序
+
+四类包全部安装时，必须按文件名前缀从小到大覆盖：
+
+1. `01-mpv-base-vX.Y.Z.7z`
+2. `02-mpv-config-vX.Y.Z.7z`（同版本 Base 已包含 Config，可跳过）
+3. `03-mpv-extras-vX.Y.Z.7z.001`（`.002` 放在同一目录，只解压 `.001`）
+4. `04-mpv-lsfg-research-private.7z`（可选，必须最后覆盖）
+
+Base 或 Config 会覆盖部分 LSFG 菜单及状态同步脚本。如果以后重新安装或更新
+Base/Config，需要再次解压 `04` 私有包。
 
 ## 下载与安装
 
@@ -34,8 +41,8 @@
 
 从 [Releases](https://github.com/maxzrb/mpv-portable/releases) 下载：
 
-1. 下载 `mpv-base-vX.Y.Z.7z`
-2. 下载 `mpv-extras-vX.Y.Z.7z.001` 和 `.002`（两个分卷都需要）
+1. 下载 `01-mpv-base-vX.Y.Z.7z`
+2. 下载 `03-mpv-extras-vX.Y.Z.7z.001` 和 `.002`（两个分卷都需要）
 3. 解压 Base 包到你想要的位置
 4. 解压 Extras 包到**同一目录**（用 7-Zip 打开 `.001` 即可）
 5. 运行 `mpv.exe`
@@ -58,14 +65,14 @@ mpv-portable/
 
 已有 mpv 播放器，只想用这套配置：
 
-1. 下载 `mpv-config-vX.Y.Z.7z`
+1. 下载 `02-mpv-config-vX.Y.Z.7z`
 2. 解压到 mpv 的配置目录（覆盖 `portable_config/`）
 
 ### 方案三：手动组装
 
 1. 下载任意标准 mpv Windows 构建
-2. 下载 `mpv-config-vX.Y.Z.7z`，解压到 mpv 目录
-3. 如需完整功能，再下载 `mpv-extras-vX.Y.Z.7z.00x` 解压
+2. 下载 `02-mpv-config-vX.Y.Z.7z`，解压到 mpv 目录
+3. 如需完整功能，再下载 `03-mpv-extras-vX.Y.Z.7z.00x` 解压
 
 ## 更新方式
 
