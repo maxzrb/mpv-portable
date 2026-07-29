@@ -5,12 +5,12 @@
 | 项目 | 状态 |
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
-| **分支** | `research/lsfg-windows`（仅本地研究，未推送） |
-| **最新发布提交** | `9735802`（tag: `v1.1.1`） |
-| **工作区** | LSFG 遥测已同步 Tab stats；四类包已按 01～04 覆盖顺序编号，尚未提交 |
+| **分支** | `master`（已本地合并 LSFG 研究分支，尚未推送） |
+| **最新发布提交** | `45c2716`（tag: `v1.1.1`） |
+| **工作区** | LSFG Windows Layer、菜单、遥测与四包编号均已合并到本地 `master` |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.1.1（已发布） |
-| **上次操作** | 为 Base、Config、Extras 和 LSFG 私有包增加覆盖顺序编号及 README 说明 |
+| **上次操作** | 验收后将 `research/lsfg-windows` 合并到本地 `master` |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -432,3 +432,29 @@ c:\Program portable\mpv2\
   - 执行策略阻止自动递归清理，测试归档仍位于 `tmp/package-order-validation/`。
   - 解出的 README 校验文件仍位于 `tmp/package-order-readme-check/`；两目录均为可删除的临时产物并已被 Git 忽略。
 - **Git 状态**: 改动尚未提交、未推送，没有重新生成正式 Release 或更新公开 GitHub Release。
+
+### 2026-07-30 01:05 会话: 验收并合并 LSFG 研究分支
+
+- **用户决策**: LSFG Windows 研究功能和四类包编号验收通过，允许合并到主分支。
+- **主分支确认**:
+  - 仓库不存在 `main`；远端默认主分支为 `master`。
+  - 合并前执行 `git fetch origin --prune`，确认本地 `master` 与 `origin/master` 同为 `45c2716`。
+- **提交与合并**:
+  - 研究提交：`a9732f6 feat: 集成 LSFG Vulkan Layer 研究功能`。
+  - 合并提交：`ce60088 merge: 合并 LSFG Windows 研究功能`。
+  - 合并无冲突，保留 `research/lsfg-windows` 分支作为功能基线。
+- **提交范围审计**:
+  - 共纳入 193 个文件，包括 mpv 菜单/控制脚本、Windows Layer GPL 源码、构建脚本、正确的 `lsfg-vk-layer.dll` 及研究文档。
+  - `Lossless Scaling/`、根目录运行时 `lsfg-vk/`、`release/` 和 `tmp/` 继续由 `.gitignore` 排除。
+  - 用户提供的 `Lossless.dll`、私有包和测试归档均未进入 Git。
+  - 忽略早期 MinGW 生成且未被使用的 `liblsfg-vk-layer.dll` 副本。
+- **合并前验证**:
+  - Windows Layer 使用既有 w64devkit/CMake/Ninja 工具链重新配置并增量构建成功，安装产物保持最新。
+  - `build-release.ps1`、`build-lsfg-research.ps1`、`start-mpv-lsfg.ps1` 和 `build-windows.ps1` 均通过 PowerShell 解析器检查。
+  - `stats.lua`、`quality_status.lua` 和 `lsfg_control.lua` 通过 mpv `--no-config` 加载测试。
+  - 修复上游 `Configuration.md` 两处尾随空格后，`git diff --cached --check` 通过。
+- **未执行事项**:
+  - 没有推送 `master` 或研究分支。
+  - 没有创建新版本、Tag 或更新公开 GitHub Release。
+  - 正式编号包尚未重新生成；此前的临时验证目录仍在 `tmp/` 且被 Git 忽略。
+- **Git 状态**: 本收尾记录提交后，本地 `master` 预计领先 `origin/master` 3 个提交，工作树应保持干净。
