@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master` |
 | **最新发布提交** | `bf1be68`（tag: `v1.1.0`） |
-| **工作区** | v1.1.0 已发布，本地与远程同步 |
+| **工作区** | v1.1.1 已完成菜单修改与打包，待提交发布 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.1.0（已发布） |
-| **上次操作** | 发布并核验 GitHub Release v1.1.0 |
+| **项目版本** | v1.1.1（待发布） |
+| **上次操作** | 将 SVP 菜单名称精简并构建 v1.1.1 配置包与基础包 |
 | **自定义脚本** | portable_config/scripts/stats.lua (覆盖内置) |
 
 ## 环境
@@ -270,3 +270,22 @@ c:\Program portable\mpv2\
   - `release/` 内保留两个已上传包，由 `.gitignore` 排除。
   - `build/validate-v1.1.0` 是解包启动验证副本，由 `.gitignore` 排除；执行环境阻止递归删除，可由用户稍后手动删除。
 - **Git 状态**: 发布代码和标签均已同步；本条 HandShake 收尾记录提交后应保持工作树干净。
+
+### 2026-07-29 18:48 会话: 精简 SVP 菜单并准备 v1.1.1
+
+- **用户需求**: 将“SVP Pro · 需安装 SVP”缩短为“SVP”，提交并更新 Release。
+- **本地核验**:
+  - 当前系统未安装 SVP 软件，但项目自带 `svpflow1_vs.dll` 与 `svpflow2_vs.dll`。
+  - `MEMC_SVP_PRO.vpy` 通过 `k7sfunc.SVP_PRO()` 调用随包 SVPFlow 插件，不依赖 SVP Manager。
+  - 使用测试视频实际加载 SVP 滤镜成功。
+- **菜单修改**: `portable_config/input.conf` 中补帧菜单名称已改为“SVP”，滤镜命令和动态勾选逻辑保持不变。
+- **验证**:
+  - `input.conf` 由 mpv 实际解析成功。
+  - SVP 滤镜独立处理 12 帧测试视频成功。
+  - `git diff --check` 通过。
+- **发布范围**: 仅菜单配置变化，构建 v1.1.1 的 config 与 base 两包；extras 继续复用 v1.0.0。
+- **发布包**:
+  - `mpv-config-v1.1.1.7z`：33,817,671 字节；SHA-256 `BA6270CD61493C3E8BC6EFDBDDCF33144586A4382C8E90473BBE3D76E54F2C60`。
+  - `mpv-base-v1.1.1.7z`：78,173,427 字节；SHA-256 `979884132A5BA9A19EA9E8BEB076171007A1DE74D849B01F170AE265EDA526D9`。
+- **包体核验**: 两包 7z 完整性测试通过，均包含新菜单文案且不含旧文案；没有误包含 shaders 或 VS 素材。
+- **待执行**: 提交、推送、创建 v1.1.1 标签与 GitHub Release，并上传两包。
