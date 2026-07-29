@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master` |
-| **最新提交** | `175b4f4` 按用途重组着色器与视频滤镜菜单 |
-| **工作区** | v1.1.0 选择性打包与版本记录等待提交 |
+| **最新发布提交** | `bf1be68`（tag: `v1.1.0`） |
+| **工作区** | v1.1.0 已发布，本地与远程同步 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.1.0（待创建 GitHub Release） |
-| **上次操作** | 构建并验证 v1.1.0 配置包与基础包 |
+| **项目版本** | v1.1.0（已发布） |
+| **上次操作** | 发布并核验 GitHub Release v1.1.0 |
 | **自定义脚本** | portable_config/scripts/stats.lua (覆盖内置) |
 
 ## 环境
@@ -255,3 +255,18 @@ c:\Program portable\mpv2\
   - 解压基础包后实际启动 mpv，成功加载新脚本、`input.conf` 和 `profiles.conf`。
   - 解包验证产生的忽略目录 `build/validate-v1.1.0` 仍在本地；自动递归清理被执行环境策略拦截，不影响 Git 或发布包。
 - **待执行**: 提交版本与打包机制，创建并上传 GitHub Release v1.1.0。
+
+### 2026-07-29 18:02 会话: 发布 GitHub Release v1.1.0
+
+- **发布提交**: `bf1be68 release: 准备 v1.1.0 配置与基础包`。
+- **标签**: 已创建并推送带注释标签 `v1.1.0`，远程标签解引用到 `bf1be68`。
+- **Release**: https://github.com/maxzrb/mpv-portable/releases/tag/v1.1.0
+- **上传资产**:
+  - `mpv-config-v1.1.0.7z`：33,817,819 字节，GitHub digest 与本地 SHA-256 一致。
+  - `mpv-base-v1.1.0.7z`：78,173,383 字节，GitHub digest 与本地 SHA-256 一致。
+- **发布状态**: 正式发布，非草稿、非预发布；Release 说明明确复用 v1.0.0 extras。
+- **未上传**: extras 分卷未变化，因此没有重新构建或上传。
+- **本地临时文件**:
+  - `release/` 内保留两个已上传包，由 `.gitignore` 排除。
+  - `build/validate-v1.1.0` 是解包启动验证副本，由 `.gitignore` 排除；执行环境阻止递归删除，可由用户稍后手动删除。
+- **Git 状态**: 发布代码和标签均已同步；本条 HandShake 收尾记录提交后应保持工作树干净。
