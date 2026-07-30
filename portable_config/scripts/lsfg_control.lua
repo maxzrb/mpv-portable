@@ -91,6 +91,14 @@ local function launch(disable, requested_multiplier, requested_performance, clea
         return
     end
 
+    -- Optimus / 无 VRR 下 Present 速率≠源帧率，将 estimated-vf-fps 写入侧文件供启动脚本读取
+    local video_fps = mp.get_property_number('estimated-vf-fps', 0)
+    if video_fps and video_fps > 0 then
+        local fps_path = utils.join_path(request_root, 'lsfg-source-fps')
+        local f = io.open(fps_path, 'w')
+        if f then f:write(tostring(video_fps)); f:close() end
+    end
+
     local request_name = string.format('lsfg-request-%s-%d.json',
         tostring(mp.get_property_number('pid', 0)), os.time())
     local request_path = utils.join_path(request_root, request_name)

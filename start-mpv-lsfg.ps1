@@ -42,6 +42,14 @@ if ($MpvArgumentsFile) {
         ConvertFrom-Json
     $MpvArguments = @($ParsedArguments)
     Remove-Item -LiteralPath $MpvArgumentsFile -Force
+
+    # Lua 写入的 estimated-vf-fps，Optimus / 无 VRR 下矫正 Layer 遥测
+    $SourceFpsFile = Join-Path $LayerRoot 'lsfg-source-fps'
+    if (Test-Path -LiteralPath $SourceFpsFile) {
+        $fps = (Get-Content -LiteralPath $SourceFpsFile -Raw).Trim()
+        if ($fps) { $env:LSFGVK_SOURCE_FPS = $fps }
+        Remove-Item -LiteralPath $SourceFpsFile -Force
+    }
 }
 
 # 从已启用 LSFG 的 mpv 切回普通播放时，子进程会继承环境变量，需要显式清理。.

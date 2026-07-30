@@ -315,21 +315,15 @@ VkResult Swapchain::present(const vk::Vulkan& vk,
         throw ls::vulkan_error(res, "vkQueuePresentKHR() failed");
 
     this->fidx++;
-    this->updateTelemetry(this->info.images[imageIdx]);
+    this->updateTelemetry();
     return res;
 }
 
-void Swapchain::updateTelemetry(VkImage presentedImage) noexcept {
+void Swapchain::updateTelemetry() noexcept {
     if (!this->telemetryPath)
         return;
 
-    // 通过比较 VkImage 句柄判断是否为新帧，而非简单计数 Present 次数。
-    // Optimus / 无 VRR 显示器下，mpv 可能多次 Present 同一画面匹配刷新率；
-    // VFR 视频下帧间隔也可能变化。只数唯一帧，天然适配这两种场景。
-    if (presentedImage != this->lastPresentedImage) {
-        this->lastPresentedImage = presentedImage;
-        this->telemetryInputFrames++;
-    }
+    this->telemetryInputFrames++;
     this->telemetryOutputFrames += this->profile.multiplier;
 
     const auto now = std::chrono::steady_clock::now();
@@ -338,7 +332,16 @@ void Swapchain::updateTelemetry(VkImage presentedImage) noexcept {
     if (elapsed < 0.5)
         return;
 
-    const auto inputFps = static_cast<double>(this->telemetryInputFrames) / elapsed;
+    auto inputFps = static_cast<double>(this->telemetryInputFrames) / elapsed;
+
+    // Optimus iGPU / 无 VRR 显示器下 Present 速率可能等于屏幕刷新率而非源帧率。
+    // 上层 Lua 脚本写入 estimated-vf-fps，由启动脚本设为环境变量。
+    if (const auto* srcFps = std::getenv("LSFGVK_SOURCE_FPS"); srcFps && *srcFps) {
+        try {
+            inputFps = std::stod(srcFps);
+        } catch (...) {}
+    }
+
     const auto outputFps = inputFps * this->profile.multiplier;
     const auto updatedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
