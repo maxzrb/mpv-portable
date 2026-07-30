@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
-| **最新发布提交** | `fce95b3`（tag: `v1.2.0`） |
-| **工作区** | v1.2.0 基础上已完成菜单/置顶按钮、安全更新器、15 文件合并及多项二进制升级；改动尚未提交 |
+| **最新发布提交** | `f4fa2f6`（tag: `v1.3.1`） |
+| **工作区** | v1.3.1 已发布；工作树干净 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.2.0（已发布） |
-| **上次操作** | 清理 R78 临时文件，新增 FW 独立增量包 (04)，LSFG 重编号为 05，更新全部打包脚本与文档 |
+| **项目版本** | v1.3.1（已发布） |
+| **上次操作** | 发布 v1.3.1：五包重构、LSFG env var 遥测修正、依赖升级 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -685,3 +685,28 @@ c:\Program portable\mpv2\
   - `git diff --check` 通过（仅仓库既有 autocrlf 提示）。
 - **文件变更**: `build-release.ps1`、`build-fasterwhisper-public.ps1`（新增）、`build-lsfg-public.ps1`、`build-all-packages.ps1`、`build-full-private.ps1`、`README.MD`、`docs/codex/STATUS.md`、`version/工作进度.md`。
 - **Git 状态**: 本批改动与前序二进制升级、菜单、置顶按钮、yt-dlp 打包等大量改动均尚未提交或推送。建议尽快分批提交。
+
+### 2026-07-30 18:33–21:00 会话: v1.3.0/v1.3.1 打包重构 + LSFG 帧率修复
+
+- **包结构重组** (01→02→03→04→05):
+  - 01 Base: mpv 核心 + 运行时 + 基准配置，仅 mpv 升级时重打
+  - 02 Extras: 着色器 + VapourSynth + Python + 工具 (原 03，移除 FW)
+  - 03 FW: Faster-Whisper AI 字幕 (从 Extras 拆分为独立增量包)
+  - 04 LSFG: Vulkan Layer + 启动器 + 控制脚本联动
+  - 05 Config: 最终个人设置覆盖层 (原 02，移至最后)
+  - 新增 `build-config-public.ps1` 构建 05 Config
+  - `build-full-private.ps1` 改为全量 Lossless Scaling 目录备份
+- **LSFG 帧率修复历程**:
+  - 问题根因：Optimus 笔记本 iGPU 控制交换链 Present 节奏，LSFG Layer 计数错误
+  - 尝试 1: `--vulkan-swap-mode=fifo` — 无效，Optimus 无视 FIFO
+  - 尝试 2: `--display-fps-override` — 破坏 165Hz 主力机行为，回退
+  - 尝试 3: VkImage 句柄比较 — mpv 每次 Present 申请新图像，句柄永远不同
+  - 尝试 4: Layer 生成限流 — 跳帧打乱 Vulkan 信号量链导致死锁
+  - 最终方案: `estimated-vf-fps` → Lua 侧文件 → PS 设 env var → Layer 遥测覆写
+  - 已知限制：Optimus 笔记本仍以显示器速率生成帧，30s 预热后轻微卡顿
+- **Layer 编译工具链**: w64devkit + CMake + Ninja 存放于 `buildtool/`（未纳入 Git）
+- **v1.3.1 发布**:
+  - Tag `v1.3.1` 已推送
+  - 五个公开包上传 GitHub Release，个人全量包仅本地保留
+  - SHA-256 核验: 01 `30790058` / 02 `94959d1d`+`abc25eac` / 03 `e10b1a4a` / 04 `2e2e53cc` / 05 `e2d18755`
+- **Git 状态**: 全部提交已推送到 `origin/master`；工作树干净（除 `buildtool/` 未跟踪）
