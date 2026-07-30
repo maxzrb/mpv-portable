@@ -89,6 +89,9 @@ namespace lsfgvk::layer {
         };
         uint64_t telemetryInputFrames{};
         uint64_t telemetryOutputFrames{};
+        std::chrono::steady_clock::time_point lastGenerationTime{
+            std::chrono::steady_clock::time_point::min()
+        };
 
         ls::GameConf profile;
         SwapchainInfo info;
