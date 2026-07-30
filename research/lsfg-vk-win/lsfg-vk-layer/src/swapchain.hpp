@@ -62,8 +62,8 @@ namespace lsfgvk::layer {
             void* next_chain, uint32_t imageIdx,
             const std::vector<VkSemaphore>& semaphores);
     private:
-        /// 将真实 Present 速率写给 mpv OSD。
-        void updateTelemetry() noexcept;
+        /// 将真实源帧率写给 mpv OSD（按唯一帧计数，适配 VFR / 无 VRR）。
+        void updateTelemetry(VkImage presentedImage) noexcept;
 
         std::vector<vk::Image> sourceImages;
         std::vector<vk::Image> destinationImages;
@@ -89,6 +89,7 @@ namespace lsfgvk::layer {
         };
         uint64_t telemetryInputFrames{};
         uint64_t telemetryOutputFrames{};
+        VkImage lastPresentedImage{VK_NULL_HANDLE};
 
         ls::GameConf profile;
         SwapchainInfo info;

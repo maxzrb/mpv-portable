@@ -91,22 +91,6 @@ local function launch(disable, requested_multiplier, requested_performance, clea
         return
     end
 
-    -- 调试：记录所有可用的帧率属性值
-    local debug_fps = {
-        container_fps = mp.get_property_number('container-fps'),
-        estimated_vf_fps = mp.get_property_number('estimated-vf-fps'),
-        video_fps = mp.get_property_number('video-fps'),
-        display_fps = mp.get_property_number('display-fps'),
-    }
-    local fps_path = utils.join_path(request_root, 'lsfg-source-fps')
-    local fps_file, fps_err = io.open(fps_path, 'w')
-    if fps_file then
-        fps_file:write(utils.format_json(debug_fps))
-        fps_file:close()
-    else
-        msg.warn('无法写入 LSFG 帧率调试文件：' .. tostring(fps_err))
-    end
-
     local request_name = string.format('lsfg-request-%s-%d.json',
         tostring(mp.get_property_number('pid', 0)), os.time())
     local request_path = utils.join_path(request_root, request_name)
