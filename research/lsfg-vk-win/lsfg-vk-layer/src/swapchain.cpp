@@ -216,24 +216,7 @@ VkResult Swapchain::present(const vk::Vulkan& vk,
         {}, this->syncSemaphore->handle(), this->idx++
     );
 
-    // LSFGVK_SOURCE_FPS 设为源帧率时，按预期帧间隔限流生成。
-    // Optimus / 无 VRR 下 Present 速率可能远大于源帧率，每帧都生成会导致画面抖动。
-    bool skipGeneration = false;
-    if (const auto* srcFps = std::getenv("LSFGVK_SOURCE_FPS"); srcFps && *srcFps) {
-        try {
-            const auto expectedInterval = 1.0 / std::stod(srcFps);
-            const auto now = std::chrono::steady_clock::now();
-            const auto elapsed = std::chrono::duration<double>(
-                now - this->lastGenerationTime).count();
-            if (elapsed >= expectedInterval * 0.85) {
-                this->lastGenerationTime = now;
-            } else {
-                skipGeneration = true;
-            }
-        } catch (...) {}
-    }
-
-    for (size_t i = 0; i < (skipGeneration ? size_t{0} : this->destinationImages.size()); i++) {
+    for (size_t i = 0; i < this->destinationImages.size(); i++) {
         auto& pcs = this->postCopySemaphores.at(this->idx % this->postCopySemaphores.size());
         auto& destinationImage = this->destinationImages.at(i);
         auto& pass = this->passes.at(i);
