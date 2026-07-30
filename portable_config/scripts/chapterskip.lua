@@ -1,16 +1,16 @@
 --[[
-  * chapterskip.lua v.2026-02-20
+  * chapterskip.lua v.2026-04-30
   *
-  * AUTHORS: detuur, microraptor, Eisa01, dyphire
+  * AUTHORS: po5, detuur, microraptor, Eisa01, allecsc, dyphire
   * License: MIT
-  * link: https://github.com/detuur/mpv-scripts
+  * link: https://github.com/dyphire/mpv-scripts
   *
   * This script skips to the next silence in the file. The
   * intended use for this is to skip until the end of an
   * opening sequence, at which point there's often a short
   * period of silence.
   *
-  * The default keybind is F3. You can change this by adding
+  * You can change this by adding
   * the following line to your input.conf:
   *     KEY script-binding skip-to-silence
   *
@@ -171,18 +171,19 @@ end
 
 local function url_decode(str)
     if str ~= nil then
-        str = str:gsub("^%a[%a%d-_]+://", "")
-              :gsub("^%a[%a%d-_]+:\\?", "")
-              :gsub("%%(%x%x)", hex_to_char)
-        if str:find("://localhost:?") then
-            str = str:gsub("^.*/", "")
+        str = str:gsub('^%a[%a%d-_]+://', '')
+              :gsub('^%a[%a%d-_]+:\\?', '')
+              :gsub('%%(%x%x)', hex_to_char)
+        if str:find('://localhost:?') then
+            str = str:gsub('^.*/', '')
         end
-        str = str:gsub("%?.+", "")
-              :gsub("%+", " ")
-        return str
-    else
-        return
+        str = str:gsub("%?.+", ""):gsub("%+", " ")
+        local last_pos = str:match('.*[\\/:%?]()')
+        if last_pos then
+            str = str:sub(last_pos)
+        end
     end
+    return str
 end
 
 local function timestamp(duration)
@@ -386,14 +387,20 @@ render_button = function()
     end
 
     -- Calculate scale (same as notify_skip)
-    local scale = screen_height / 1080    local button_padding_x = o.button_padding_x * scale
+    local scale = screen_height / 1080
+    local button_padding_x = o.button_padding_x * scale
     local button_padding_y = o.button_padding_y * scale
     local font_size = o.button_font_size * scale
+    local hint_font_size = font_size * 0.9  -- Smaller font for hint
 
-    -- Calculate button dimensions
+    -- Calculate button dimensions with hint text
     local message_width = #button_state.message * font_size * 0.6
-    local button_width = message_width + button_padding_x * 2
-    local button_height = font_size + button_padding_y * 2
+    local hint_text = "[y/n]"
+    local hint_width = #hint_text * hint_font_size * 0.6
+    local max_text_width = math.max(message_width, hint_width)
+    local button_width = max_text_width + button_padding_x * 2
+    local line_spacing = font_size * 0.1
+    local button_height = font_size + line_spacing + hint_font_size + button_padding_y * 2
 
     -- Position button: bottom right, same as notify_skip
     local margin = o.button_margin * scale
@@ -473,13 +480,20 @@ render_button = function()
         ass:draw_stop()
     end
 
-    -- Draw text
+    -- Draw text (main message)
     local text_x = button_x + button_width / 2
-    local text_y = button_y + button_height / 2
+    local text_y = button_y + button_height / 2 - (hint_font_size + line_spacing) / 2
     ass:new_event()
     ass:append("{\\an5\\fs" .. font_size .. "\\b1\\bord0\\shad0\\1c&H" .. text_color .. "&}")
     ass:pos(text_x, text_y)
     ass:append(button_state.message)
+
+    -- Draw keyboard hint (second line)
+    local hint_y = text_y + font_size / 2 + line_spacing + hint_font_size / 2
+    ass:new_event()
+    ass:append("{\\an5\\fs" .. hint_font_size .. "\\b0\\bord0\\shad0\\1c&H" .. text_color .. "&\\alpha&H80&}")
+    ass:pos(text_x, hint_y)
+    ass:append(hint_text)
 
     local ass_text = ass.text
 
@@ -539,11 +553,14 @@ hide_button = function()
     end
 
     unbind_button_click()
+
+    -- Remove keyboard shortcuts
+    mp.remove_key_binding("chapterskip-confirm")
+    mp.remove_key_binding("chapterskip-cancel")
 end
 
 -- Show button with countdown
 local function show_button(message, action, skip_obj)
-    msg.info("show_button: message=" .. message .. ", timeout=" .. o.timeout)
     hide_button()  -- Clear any existing button
 
     button_state.visible = true
@@ -556,6 +573,21 @@ local function show_button(message, action, skip_obj)
     render_button()
 
     bind_button_click()
+
+    -- Add keyboard shortcuts for confirm/cancel
+    mp.add_forced_key_binding("y", "chapterskip-confirm", function()
+        if button_state.action then
+            button_state.action()
+        end
+        hide_button()
+    end)
+
+    mp.add_forced_key_binding("n", "chapterskip-cancel", function()
+        if button_state.skip_obj then
+            button_state.skip_obj.cancelled = true
+        end
+        hide_button()
+    end)
 
     if o.timeout > 0 then
         button_state.countdown_timer = mp.add_periodic_timer(1, function()
@@ -658,7 +690,7 @@ local function cache_skip()
     end
 
     if not matched then
-        if state.start >= 90 or state.ended - state.start > 120 then
+        if state.start > 100 or state.ended - state.start > 120 then
             return
         elseif state.start <= 30 then
             state.start = 0
@@ -761,7 +793,7 @@ local function start_skip_watcher()
             end
         end
 
-        if #active_skips == 0 then
+        if #active_skips == 0 and skip_timer then
             skip_timer:kill()
             skip_timer = nil
         end
@@ -797,8 +829,11 @@ local function chapterskip(_, current)
     end
     local chapters = mp.get_property_native("chapter-list")
     local duration = mp.get_property_number("duration") or 0
-    local total_chapters = #chapters
+    local total_chapters = #chapters or 0
 
+    if duration <= o.intro_time_window or total_chapters <= 1 then return end
+
+    local matches_info = {}
     for i, chapter in ipairs(chapters) do
         -- Calculate chapter duration
         local chapter_duration = 0
@@ -809,15 +844,46 @@ local function chapterskip(_, current)
         end
 
         local is_match, match_type, category = matches(i, chapter.title, chapter.time, chapter_duration, total_chapters, duration)
-        if not skipped[i] and is_match then
+        matches_info[i] = {
+            is_match = is_match,
+            match_type = match_type,
+            category = category,
+            time = chapter.time,
+            chapter = chapter,
+            chapter_duration = chapter_duration,
+        }
+    end
+
+    -- If multiple opening/preview matches exist within intro_time_window, prefer the second one
+    local intro_candidates = {}
+    for i, info in ipairs(matches_info) do
+        if info and info.is_match and info.time and info.time < o.intro_time_window then
+            -- consider opening/preview matches or position-based opening
+            if info.category == "opening" or info.category == "preview" or info.match_type == "position-opening" then
+                table.insert(intro_candidates, i)
+            end
+        end
+    end
+    if #intro_candidates >= 2 then
+        table.sort(intro_candidates, function(a, b) return a < b end)
+        local chosen = intro_candidates[2]
+        for _, idx in ipairs(intro_candidates) do
+            if idx ~= chosen and matches_info[idx] then
+                matches_info[idx].is_match = false
+            end
+        end
+    end
+
+    for i, info in ipairs(matches_info) do
+        if info and not skipped[i] and info.is_match then
             if i == current + 1 then
                 skipped[i] = true
                 local skip_time = chapters[i + 1] and chapters[i + 1].time or mp.get_property_native("duration")
                 add_active_skip({
-                    start = chapter.time,
+                    start = chapters[i].time,
                     ended = skip_time,
-                    title = chapter.title,
-                    category = category,  -- Store the category information
+                    title = chapters[i].title,
+                    category = info.category,
                 })
             end
         end
@@ -835,6 +901,8 @@ local function check_skip()
     local file_ext = filename:lower():match("%.([^%.]+)$") or ""
     local title = mp.get_property_native("media-title"):gsub("%.[^%.]+$", "")
     local dir = get_parent_dir(path)
+
+    if duration <= o.intro_time_window then return end
 
     if is_protocol(filename) then
         title = url_decode(title)
@@ -859,7 +927,7 @@ local function check_skip()
 
     -- Check if it's the same file or a different file in the same directory
     local is_same_file = (fname == filename)
-    
+
     if (not is_protocol(path) and file_ext ~= fname_ext) or
     (fname ~= filename and not compare_filenames(fname, filename)) then
         return
@@ -873,7 +941,7 @@ local function check_skip()
         if not o.enable_history_position_inference and not is_same_file then
             return  -- Skip history for non-chapter files when disabled and not the same file
         end
-        
+
         -- Apply history with category inference (if enabled or same file)
         for _, s in ipairs(skip_list) do
             local category = nil
@@ -894,13 +962,11 @@ local function check_skip()
 
     local used_chapters = {}
     for _, s in ipairs(skip_list) do
-        local matched = false
         for i, chapter in ipairs(chapters) do
             if not used_chapters[i] then
                 local start_time = chapter.time
                 local end_time   = chapters[i + 1] and chapters[i + 1].time or duration
                 if math.abs((end_time - start_time) - (s.ended - s.start)) <= 0.05 then
-                    matched = true
                     used_chapters[i] = true
                     -- Infer category for chapter-matched skips
                     local category = nil
@@ -917,21 +983,6 @@ local function check_skip()
                     break
                 end
             end
-        end
-        if not matched then
-            -- Unmatched skip: always infer category based on position
-            local category = nil
-            if s.start < o.intro_time_window then
-                category = "opening"
-            elseif duration > 0 and s.start >= (duration - o.outro_time_window) then
-                category = "ending"
-            end
-            add_active_skip({
-                start = s.start,
-                ended = s.ended,
-                title = s.title,
-                category = category
-            })
         end
     end
 end

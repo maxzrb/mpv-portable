@@ -4,44 +4,48 @@
 >
 > Fork from [gaoxing64/MPV-lazy-full](https://github.com/gaoxing64/MPV-lazy-full) v2.0.0
 
-## 四类包的关系
+## 五类包的关系
 
 ```
-01 Base（核心播放器，已包含 Config）
-   ↓ 可选覆盖
-02 Config（只更新配置；同版本可跳过）
+01 Base（核心播放器 + 基本配置，首个安装）
    ↓ 追加
-03 Extras（着色器、VapourSynth、Python 与工具）
-   ↓ 最后覆盖
-04 LSFG 公开扩展包（不含 Steam 文件，用户自行提供 Lossless.dll）
+02 Extras（着色器、VapourSynth、Python、工具）
+   ↓ 追加
+03 Faster-Whisper 扩展包（AI 语音识别运行时）
+   ↓ 追加
+04 LSFG 扩展包（补帧，含控制脚本以保证联动可用性）
+   ↓ 最终覆盖
+05 Config（个人设置、OSC 主题、字体，最后安装）
 ```
 
 | 顺序 | 包 | 解压即用？ | 内容 |
 |------|----|------------|------|
-| **01** | **Base** | ✅ 基本播放 | Config + mpv 核心 + 运行时 |
-| **02** | **Config** | ✗ 需要 mpv 本体 | 脚本、设置、OSC 主题、字体；同版本 Base 已包含，可跳过 |
-| **03** | **Extras** | ✗ 需要 Base | 着色器、VapourSynth 补帧/超分、AI 字幕、工具 |
-| **04** | **LSFG 公开扩展包** | ✗ 需要 Base 及正版 Steam 文件 | GPL Vulkan Layer、启动器和对应源码；不含 Lossless Scaling 文件 |
+| **01** | **Base** | ✅ 基本播放 | mpv 核心 + 运行时 + 基础配置 |
+| **02** | **Extras** | ✗ 需要 Base | 着色器、VapourSynth 补帧/超分、Python、工具 |
+| **03** | **Faster-Whisper** | ✗ 需要 Base | AI 语音识别字幕运行时；语音模型首次选择时自动下载 |
+| **04** | **LSFG** | ✗ 需要 Base 及 Steam 文件 | GPL Vulkan Layer、启动器、控制脚本、源码；不含 Steam DLL |
+| **05** | **Config** | ✗ 需要 Base | 个人设置的最终覆盖层，最后安装 |
 
 ## 安装与覆盖顺序
 
-四类包全部安装时，必须按文件名前缀从小到大覆盖：
+五类包全部安装时，必须按文件名前缀从小到大覆盖：
 
 1. `01-mpv-base-vX.Y.Z.7z`
-2. `02-mpv-config-vX.Y.Z.7z`（同版本 Base 已包含 Config，可跳过）
-3. `03-mpv-extras-vX.Y.Z.7z.001`（`.002` 放在同一目录，只解压 `.001`）
-4. `04-mpv-lsfg-addon-vX.Y.Z.7z`（可选，建议最后安装）
+2. `02-mpv-extras-vX.Y.Z.7z.001`（`.002` 放在同一目录，只解压 `.001`）
+3. `03-mpv-fasterwhisper-addon-vX.Y.Z.7z`（可选 AI 字幕）
+4. `04-mpv-lsfg-addon-vX.Y.Z.7z`（可选补帧扩展）
+5. `05-mpv-config-vX.Y.Z.7z`（个人设置，最后安装覆盖）
 
-LSFG 菜单、控制和状态脚本归 Base/Config 管理，04 只增加运行层、启动器、源码
-和说明，不覆盖 Config 或 Extras。以后单独更新 Config 不需要重新解压 04。
+包之间允许存在交集以保证各自可用性。04 包含 LSFG 控制脚本以保联动，
+05 作为最终覆盖层可覆盖前面所有包的同名文件。单独更新配置只需解压 05。
 
 `04` 可以公开分发，但出于版权边界不包含 Lossless Scaling 的 DLL 或模型资源。
 使用者需要购买并安装 Steam 版 Lossless Scaling，然后只把其安装目录根部的
 `Lossless.dll` 复制到 `<mpv根目录>\Lossless Scaling\Lossless.dll`。
 不需要复制 `LosslessScaling.dll`、语言资源 DLL、.NET/WPF DLL 或任何 EXE。
 
-个人本地也可以生成 `mpv-full-private-vX.Y.Z.7z`。它会按 01～04 的顺序合并全部
-公开包，再加入本机 `Lossless Scaling\Lossless.dll`，形成解压即用的一体包。
+个人本地也可以生成 `mpv-full-private-vX.Y.Z.7z`。它会按 01～05 的顺序合并全部
+公开包，并加入完整 `Lossless Scaling` 目录备份，形成解压即用的一体包。
 该包含有个人购买软件中的专有文件，只能本地备份和使用，不能公开上传。
 
 ## 下载与安装
@@ -95,13 +99,13 @@ mpv-portable/
 
 所有脚本都位于项目根目录，建议在 PowerShell 中从该目录运行。
 
-### 一次构建四个公开包
+### 一次构建五个公开包
 
 ```powershell
 .\build-all-packages.ps1 -Version '1.2.0'
 ```
 
-输出 01 Base、02 Config、03 Extras 分卷和 04 LSFG 公开扩展包。
+输出 01 Base、02 Extras 分卷、03 FW、04 LSFG 和 05 Config 公开包。
 
 ### 同时构建个人私用全量包
 
@@ -123,10 +127,11 @@ Lossless Scaling\Lossless.dll
 .\build-full-private.ps1 -Version '1.2.0'
 ```
 
-- `build-release.ps1`：构建 01～03。
-- `build-lsfg-public.ps1`：构建 04，不包含任何 Steam 文件。
-- `build-full-private.ps1`：完整合并已生成的 01～04（包括 LSFG 研究源码和说明），
-  再加入个人 `Lossless.dll`。
+- `build-release.ps1`：构建 01 Base + 02 Extras。
+- `build-fasterwhisper-public.ps1`：构建 03，AI 语音识别运行时。
+- `build-lsfg-public.ps1`：构建 04，含控制脚本以保证联动可用性。
+- `build-config-public.ps1`：构建 05，个人设置最终覆盖层。
+- `build-full-private.ps1`：完整合并 01～05，并加入完整 Lossless Scaling 目录备份。
 - 所有脚本可用 `-OutputDir '目录名'` 修改输出目录。
 
 ## 配置特性

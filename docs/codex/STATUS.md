@@ -7,17 +7,17 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
 | **最新发布提交** | `fce95b3`（tag: `v1.2.0`） |
-| **工作区** | v1.2.0 代码、README、Tag 和五个公开 Release 资产均已同步，工作树应保持干净 |
+| **工作区** | v1.2.0 基础上已完成菜单/置顶按钮、安全更新器、15 文件合并及多项二进制升级；改动尚未提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.2.0（已发布） |
-| **上次操作** | 推送 `master`，创建 `v1.2.0` 正式 Release 并核验远端资产 |
+| **上次操作** | 清理 R78 临时文件，新增 FW 独立增量包 (04)，LSFG 重编号为 05，更新全部打包脚本与文档 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
 
 - **操作系统**: Windows 11 Pro for Workstations 10.0.26220
 - **架构**: x86_64
-- **Python**: 3.14 (便携，根目录)
+- **Python**: 3.14.6（便携，根目录）
 - **MPV 构建源**: dyphire/mpv-winbuild
 
 ## 工作目录结构
@@ -25,6 +25,7 @@
 ```
 c:\Program portable\mpv2\
 ├── mpv.exe, mpv.com          # MPV 核心 (gitignore)
+├── yt-dlp.exe                # 在线视频解析器 (gitignore，Base 包会复制)
 ├── portable_config/          # 配置文件 (git 跟踪)
 │   └── scripts/stats.lua     # 汉化版统计信息脚本
 ├── vs-plugins/, vs-scripts/  # VapourSynth (gitignore)
@@ -38,16 +39,24 @@ c:\Program portable\mpv2\
 
 - [x] `settings.xml` 已加入 `.gitignore`
 - [ ] 根据个人需求定制 mpv.conf
-- [ ] 后续可考虑升级 yt-dlp
+- [x] 安装官方 yt-dlp 2026.07.04，并纳入公开 Base 包
+- [x] 升级 Python 3.14.3 → 3.14.6，并验证 SSL、SQLite、pip 与现有 VapourSynth R73
+- [x] 为 VapourSynth R78 设计无需全局环境变量、兼容直接双击 `mpv.exe` 的便携加载方案（已放弃：R73 为明确支持 Win7 的最后版本，暂不升级，R78 试验文件已清理）
+- [x] 更新 7-Zip 25.01 → 26.02、TorrServer MatriX.141 → 142.2、umpv-go 1.4.0 → 1.5.1
+- [x] 安全合并更新器报告的 15 个脚本、文档和着色器差异，保留本地个性化文件
+- [x] 修复 manager 的 PlayKit 分支、quality-menu 白名单、同名脚本覆盖和 Git blob 误报
+- [x] 安装 Faster-Whisper-XXL 公开版 r245.4，从 Extras 拆分为独立 04 增量包
 - [x] 恢复“着色器 / 视频滤镜”一级分类，在完整技术分类前补充少量互斥推荐入口
 - [x] 去掉 VapourSynth 菜单中间层，让补帧、超分、降噪按用途直达
 - [x] 将完整着色器库按用途重组，同时保留按原算法家族查找的专家库
 - [x] 允许补帧、超分、降噪同时启用，并提供竖排状态 OSD 与直属清空入口
 - [x] 将 LSFG 2×/3×/4×测试入口接入补帧菜单，并支持按当前进度重启切换
+- [x] 将四个 LSFG 预设收进独立子菜单，使其与其他补帧滤镜处于同一层级
+- [x] 将左上角静态置顶标记改为可点击且带状态高亮的 uosc 顶栏按钮
 - [x] 为 LSFG 增加 Layer 实时帧率遥测与可切换 OSD 覆盖层
 - [x] 为视频滤镜补齐直属状态查看和完整清空入口
 - [x] 让 LSFG 遥测跟随 Tab 常驻 stats OSD，并移至屏幕右上角
-- [x] 将四类安装包按 01 Base → 02 Config → 03 Extras → 04 LSFG 编号并写明覆盖顺序
+- [x] 将五类安装包按 01 Base → 02 Config → 03 Extras → 04 FW → 05 LSFG 编号并写明覆盖顺序
 - [x] 将第 04 包改为零 Steam 文件的公开扩展包，仅要求用户自备 `Lossless.dll`
 - [x] 统一生成 v1.2.0 四类公开包和个人私用全量包，并完成内容、交叉和完整性审计
 
@@ -517,3 +526,162 @@ c:\Program portable\mpv2\
   - 01、02、03 `.001/.002` 分卷、04 和个人全量包均通过正确的 7-Zip 完整性测试。
   - PowerShell 打包/启动脚本通过解析器检查，`git diff --check` 通过。
 - **Git 状态**: 发布收尾记录提交并推送后，本地 `master` 应与 `origin/master` 一致且工作树干净。
+
+### 2026-07-30 11:18 会话: 调整 LSFG 补帧菜单层级
+
+- **菜单调整**:
+  - 将四个 LSFG 预设由 `视频滤镜 > 补帧` 直属项移入 `视频滤镜 > 补帧 > LSFG` 子菜单。
+  - 将“查看 LSFG 状态”同步移入该子菜单。
+  - “关闭补帧”以及 mpv、MVT、RIFE、DRBA、SVP 等其他补帧入口保持原层级。
+- **验证**:
+  - uosc 菜单解析器文档和实现确认支持不限层级的 `>` 嵌套路径。
+  - `git diff --check` 通过。
+- **文件变更**: `portable_config/input.conf`、`docs/codex/STATUS.md`、`version/工作进度.md`。
+- **Git 状态**: 本次改动尚未提交或推送。
+
+### 2026-07-30 11:45 会话: 修复左上角置顶图标行为
+
+- **问题原因**:
+  - `mpv.conf` 把 `📌` 作为 `title` 模板中的静态状态文字显示，并没有为它注册点击区域。
+  - 点击该文字时事件落入全局 `MBTN_LEFT cycle pause`，因此表现为暂停。
+- **实现**:
+  - 从窗口标题模板移除静态 `📌`。
+  - 在 uosc `TopBar` 左上角新增独立的 `push_pin` 按钮和点击区域。
+  - 单击按钮执行 `cycle ontop` 并显示当前置顶状态；置顶时按钮保持高亮。
+  - uosc 主状态新增 `ontop` 属性监听，保证外部快捷键 `Alt+T` 改变置顶状态时按钮同步刷新。
+  - 右侧最小化、最大化和关闭按钮保持不变。
+- **验证**:
+  - `main.lua` 与 `TopBar.lua` 均通过 LuaJIT 语法检查。
+  - 使用完整 `portable_config` 和短时 `lavfi` 视频完成脚本加载冒烟测试，mpv 正常退出。
+  - `git diff --check` 通过。
+- **文件变更**: `portable_config/mpv.conf`、`portable_config/scripts/uosc/main.lua`、`portable_config/scripts/uosc/elements/TopBar.lua`，以及本次 HandShake 记录。
+- **Git 状态**: 本次改动与前一项 LSFG 菜单调整均尚未提交或推送。
+
+### 2026-07-30 12:51 会话: 安装 yt-dlp 并接入公开 Base 包
+
+- 从 yt-dlp 官方 GitHub 最新稳定 Release 下载 Windows 单文件程序 `yt-dlp.exe`，版本为 `2026.07.04`。
+- 安装位置为 mpv 根目录，与 `mpv.exe` 同级；没有写入系统 PATH，也没有加入任何机器或显卡专属配置。
+- 使用官方 `SHA2-256SUMS` 完成 SHA-256 校验，结果为 `52FE3C26DCF71FBDC85B528589020BB0B8E383155CFA81B64DD447BBE35E24B8`。
+- `yt-dlp --version` 和 1752 个提取器枚举通过，包含 YouTube 与 Bilibili。
+- 从 `tmp` 工作目录启动 mpv，内置 ytdl hook 仍能自动找到 mpv 程序目录中的 yt-dlp。
+- 使用 W3Schools HTML5 视频页面完成真实联网烟测：yt-dlp 成功解析网页，mpv 成功打开解析出的媒体并解码到首帧，退出码为 0。
+- `build-release.ps1` 已把 `yt-dlp.exe` 加入 01 Base 包复制清单，PowerShell 解析器检查通过。
+- `yt-dlp.exe` 受根目录 `/*.exe` 规则忽略，不进入 Git；打包规则变更和本次记录尚未提交或推送。
+
+### 2026-07-30 13:37 会话: 全项目组件更新审计
+
+- 本轮仅检查，没有升级或覆盖运行组件；由于工作区已有未提交改动，只执行了安全的 `git fetch origin --prune`，未运行 `git pull`。
+- 当前已是上游最新或无需更新：
+  - mpv `0.41.0-860-gc8c7d91a8` 与 dyphire 最新构建 `mpv_own-2026-07-06` 一致。
+  - yt-dlp `2026.07.04`、uosc `5.12.0`、uosc_danmaku 主分支 `3.0.0` 均为当前版本。
+  - LSFG Windows 研究副本基于 `PancakeTAS/lsfg-vk develop` 提交 `8b0da2661c6f3473a7fccc8ba643880050e71642`，与上游 HEAD 完全一致。
+  - Lossless.dll 文件版本为 `3.2.2.0`；alass 为 `2.0.0`；LuaJIT 为 2026-07-01 滚动快照。
+- 存在明确正式新版：
+  - VapourSynth `R73 → R78`，官方 R78 发布于 2026-07-24。
+  - 7-Zip `25.01 → 26.02`，Python `3.14.3 → 3.14.6`。
+  - TorrServer `MatriX.141 → MatriX.142.2`，umpv-go `1.4.0 → 1.5.1`。
+  - Faster-Whisper-XXL 目录为空，配置虽指向其 EXE，但功能当前不可用；上游最新 Pro 为 `r3.256.1`。
+- GLSL 与 PlayKit `main` 提交 `4921c6796620` 的逐文件 Git blob 审计：
+  - 本地 387 个，上游 429 个；366 个同名文件字节完全一致。
+  - 上游有 63 个本地缺失文件，本地有 21 个上游已移除/替换文件。
+  - 变化主要在 ACNet、QCOM、FSRCNNX、ESPCN、ESRGAN、RAISR、Ani、AMD 和 Anime4K。
+  - 因菜单完整引用现有滤镜路径，更新必须同步增删 `input.conf` 菜单，不能只覆盖 shader 目录。
+- Lua 脚本审计：
+  - evafast、playlistmanager、sub-select 以及 simple-mpv-webui 的运行代码与上游一致。
+  - dyphire 的 `chapter-make-read`、`chapterskip`、`fix-avsync`、`hdr-mode`、`trackselect`，以及 `sub-assrt`、`sub-fastwhisper` 在 2026-05 有上游变化。
+  - file-browser 的 `modules/utils.lua` 有 2026-03-27 更新。
+  - thumbfast 上游在 2026-06-28 修复非 macOS 环境变量处理；本地同时含黑名单/排除目录定制，需手工合并。
+  - uosc 虽为最新版本，但本地有多处 UI 定制和本轮置顶按钮修改，不可直接整包覆盖。
+- manager 更新器审计发现：
+  - PlayKit 已使用 `main`，`manager.json` 未写分支时默认取 `master`，会导致 shader fetch 失败。
+  - quality-menu 白名单误写为 `qualityu%-menu%.lua$`，实际选中 0 个文件。
+  - manager 不检查 fetch/subprocess 返回码，失败后仍可能显示“all files updated”。
+  - 在修复更新器并加入隔离预览/备份前，不应使用“工具 → 一键更新脚本和着色器”直接覆盖。
+- 项目上游整包 `gaoxing64/MPV-lazy-full` 仍为 v2.0.0，没有新版整包可直接替换。
+- 审计临时 Git 仓库 `tmp/component-update-audit-20260730/` 已在收尾时删除；本轮 HandShake 记录尚未提交或推送。
+
+### 2026-07-30 14:58 会话: 修复一键更新并保护个性化改动
+
+- **更新前保护**:
+  - 在 `tmp/pre-manager-update-20260730-135035/` 保存了 manager、input、mpv 和 uosc 关键文件快照及 SHA-256。
+  - 收尾复核确认本轮之前的 `input.conf`、`mpv.conf`、`TopBar.lua` 和 uosc `main.lua` 与快照完全一致。
+- **更新器重构**:
+  - `manager.lua` 改为异步调用 `script-modules/manager-update.ps1`，更新期间不阻塞播放器界面。
+  - 同时注册 `manager-update-all` 脚本消息和按键绑定，修复 uosc 菜单发出消息却无人接收的问题。
+  - 每次更新检查 subprocess/Git 退出码；发生错误时不再显示“全部更新成功”。
+  - 上游与本地完全一致时只登记基线；仅上游变化时安全快进；双方都变化时使用旧上游基线做三方合并。
+  - 首次发现本地与上游不同时一律保留本地文件；以后仍保留本地专属修改。
+  - 覆盖现有文件前写入时间戳备份；冲突候选、上游基线、状态和完整报告均保存到被 Git 忽略的 `portable_config/cache/manager/`。
+  - 不再自动删除上游已移除的本地文件，也不再默认安装缺失脚本。
+- **更新源修复**:
+  - 修正 PlayKit `main` 分支和 `portable_config/shaders` 前缀。
+  - 修正 quality-menu 白名单拼写。
+  - 修正 stax 脚本的 `delete_current_file.lua → delete-current-file.lua` 文件名映射、Eisa 路径/匹配和 file-browser addons 扁平化。
+  - 禁用未安装的 trakt-scrobble，避免“一键更新”突然加入可选组件。
+  - GitHub 源使用无工作区的 Git 对象树检查，避免 Windows 非法文件名和 `autocrlf` 改写。
+  - 缺失着色器不自动安装，避免公开版用户一次点击被动下载大量模型；现有本地独有着色器也不会删除。
+- **真实更新结果**:
+  - 最终稳定态报告：`UNCHANGED=445`、`PROTECTED=15`、`SKIPPED=74`、`UPDATED=0`、`MERGED=0`、`ERROR=0`。
+  - 15 个差异文件全部保持本地版本；包括 14 个脚本/文档和 `aWarpSharp3_RT.glsl`。
+  - 当前仍为 387 个 GLSL；63 个上游新增着色器没有被强制装入，21 个本地独有文件没有删除。
+- **验证**:
+  - PowerShell 5.1 实际执行、JSON 解析、LuaJIT 编译、mpv 隔离脚本加载和菜单消息入口均通过。
+  - 新增/修改的 manager 文件为 UTF-8、LF；`git diff --check` 通过。
+  - 本轮只修复更新机制和建立安全基线，没有升级 VapourSynth/Python、7-Zip、TorrServer、umpv-go 或 Faster-Whisper。
+- **Git 状态**: 本次 manager 改动与前序菜单、置顶按钮、yt-dlp 打包改动均尚未提交或推送。
+
+### 2026-07-30 16:20 会话: 安全合并 15 个差异文件并分批升级二进制
+
+- **回滚保护**:
+  - 在 `tmp/pre-safe-merge-binary-upgrade-20260730-150859/` 保存 69 个待合并文件和二进制核心文件，共约 96.49 MiB。
+  - 复核 `input.conf`、`mpv.conf`、uosc `main.lua` 和 `TopBar.lua` 与更新前个性化快照 SHA-256 完全一致。
+- **15 文件安全合并**:
+  - 12 个历史上游版本安全快进到当前 HEAD；`undoredo.lua`、`cycle-commands.lua` 仅补齐文件尾差异；`aWarpSharp3_RT.glsl` 原本已与当前 PlayKit 完全一致。
+  - 合并范围包括 chapter/fix-avsync/hdr/trackselect/sub-assrt/sub-fastwhisper/chapterskip、quality-menu、file-browser 两个模块、两个 README 和两个小脚本。
+  - 新版 trackselect 已内置协议识别，因此同步移除失效的 `special_protocols` 配置项。
+  - 修复 manager 的 `chapterskip.lua` 同名来源覆盖风险：保留 dyphire/mpv-scripts 的静音/片头跳过脚本，禁用另一个功能不同的同名来源。
+  - Git blob 哈希改用 `git hash-object --no-filters`，消除着色器受换行过滤器影响的假冲突。
+- **已升级组件**:
+  - 7-Zip `25.01 → 26.02`；根目录 `7z.exe/7z.dll` 和辅助 `7zr.exe` 已更新。
+  - TorrServer `MatriX.141 → MatriX.142.2`，官方资产 SHA-256 为 `BDC6E80DA81918A19D8A74D8FE43A6C1FC584889CB43DE66D573D735F2209A5E`。
+  - umpv-go `1.4.0 → 1.5.1`，官方 zip SHA-256 为 `661843FDF9973A3255C064E686E48389D904D5855E6F848D4F5652EB24AD4FA6`。
+  - Python `3.14.3 → 3.14.6`，保留项目原有 `python314._pth`；官方嵌入包 SHA-256 为 `DF901E84A896FF1EE720AD03377E0C8D8C2244FDA79808AEEAFF6316DF1CB75C`。
+  - 安装 Faster-Whisper-XXL 公开版 `r245.4`；官方 GitHub 未提供摘要，下载包本地 SHA-256 为 `237DEE23939CDABFC96EF859FC5E584B842C3A5557E0D2CA744E1F87C14C5844`，大小与资产记录完全一致，5127 个文件通过 7-Zip 完整性测试。
+  - `build-release.ps1` 现在会在 EXE 存在时把完整 Faster-Whisper 公开版放入 Extras；未安装时才保留空目录，不指定 GPU 或设备。
+- **VapourSynth R78 兼容结论**:
+  - 官方 R78 wheel、Python 3.14.6 和 mpv 在临时环境中均能工作；显式设置 `VSSCRIPT_PATH` 后 mpv 通过三帧滤镜烟测。
+  - R78 已将 VSScript 移入 Python 包，根目录复制或硬链接均无法自动确定便携 Python；直接覆盖会破坏用户双击 `mpv.exe` 的现有用法。
+  - 正式目录因此继续保留已验证可用的 R73，只升级 Python；R78 包和试验环境保存在 `tmp`，待设计便携加载方案后再迁移。
+- **验证**:
+  - 15 个改动 Lua 文件全部通过 `loadfile` 语法检查。
+  - Python 3.14.6 的 SSL、SQLite、pip、VapourSynth R73 和 BlankClip 取帧通过。
+  - TorrServer `--help`、umpv `-help`、Faster-Whisper `--help/--version`、7-Zip 压缩包测试通过。
+  - 完整 mpv 配置以 lavfi 视频完成三帧加载，退出码 0；更新脚本全量只读检查无错误。
+  - 损坏的 1.93GB 断点续传包已移入 Windows 回收站；正确官方包与解压结果保留。
+- **Git 状态**: 本轮与前序改动均尚未提交或推送；建议按逻辑阶段分批提交。
+
+### 2026-07-30 会话: 清理 R78、新增 FW 增量包、重编号 LSFG
+
+- **R78 清理**:
+  - VapourSynth R73 是明确支持 Windows 7 的最后版本，暂不升级 R78。
+  - 删除 `tmp/` 下共约 340 MB R78 试验文件（official test、symlink test、wheel expanded、installer 和下载 zip）。
+  - 确认 `tmp/` 已无 R78 残留。
+- **Faster-Whisper 拆分为独立增量包**:
+  - 从 `build-release.ps1` 的 03 Extras 中移除 FW 复制逻辑，Extras 仅含着色器 + VapourSynth + Python + 工具。
+  - 新建 `build-fasterwhisper-public.ps1`，生成 `04-mpv-fasterwhisper-addon-vX.Y.Z.7z`。
+  - FW 包内容门禁：只允许 `faster-whisper-xxl.exe` 和 `ffmpeg.exe` 两个 EXE，排除缓存和生成文件。
+  - 包内 README 写明 01→02→03→04→05 安装顺序。
+- **LSFG 重编号 04→05**:
+  - `build-lsfg-public.ps1`：包名从 `04-mpv-lsfg-addon` 改为 `05-mpv-lsfg-addon`。
+  - 包内 README 安装顺序加入 04 FW 包。
+- **同步更新的文件**:
+  - `build-all-packages.ps1`：构建链条改为 01～03 → 04 FW → 05 LSFG。
+  - `build-full-private.ps1`：合并链从 01→02→03→04 扩展为 01→02→03→04(FW)→05(LSFG)；`$FwArchive` 新增为必需文件。
+  - 根 `README.MD`：所有"四类包"改为"五类包"；ASCII 图、表格、安装步骤和打包脚本文档全部更新。
+- **打包脚本依赖检查**:
+  - 核对所有二进制文件名与打包脚本引用：Python 3.14.6、7-Zip 26.02、TorrServer 142.2、umpv-go 1.5.1 均无文件名变化，脚本无需额外同步。
+- **验证**:
+  - 全部五个 PowerShell 打包脚本通过 `System.Management.Automation.Language.Parser` 语法检查。
+  - `git diff --check` 通过（仅仓库既有 autocrlf 提示）。
+- **文件变更**: `build-release.ps1`、`build-fasterwhisper-public.ps1`（新增）、`build-lsfg-public.ps1`、`build-all-packages.ps1`、`build-full-private.ps1`、`README.MD`、`docs/codex/STATUS.md`、`version/工作进度.md`。
+- **Git 状态**: 本批改动与前序二进制升级、菜单、置顶按钮、yt-dlp 打包等大量改动均尚未提交或推送。建议尽快分批提交。

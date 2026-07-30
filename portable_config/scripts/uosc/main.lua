@@ -382,6 +382,7 @@ state = {
 	time_human = nil, -- current playback time in human format
 	destination_time_human = nil, -- depends on options.destination_time
 	pause = mp.get_property_native('pause'),
+	ontop = mp.get_property_native('ontop'),
 	ime_active = mp.get_property_native('input-ime'),
 	chapters = {},
 	chapter_ranges = {},
@@ -713,6 +714,7 @@ end)
 mp.observe_property('border', 'bool', create_state_setter('border'))
 mp.observe_property('title-bar', 'bool', create_state_setter('title_bar'))
 mp.observe_property('loop-file', 'native', create_state_setter('loop_file'))
+mp.observe_property('ontop', 'bool', create_state_setter('ontop'))
 mp.observe_property('ab-loop-a', 'number', create_state_setter('ab_loop_a'))
 mp.observe_property('ab-loop-b', 'number', create_state_setter('ab_loop_b'))
 mp.observe_property('playlist-pos-1', 'number', create_state_setter('playlist_pos'))

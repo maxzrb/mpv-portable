@@ -42,6 +42,29 @@ if ($MpvArgumentsFile) {
         ConvertFrom-Json
     $MpvArguments = @($ParsedArguments)
     Remove-Item -LiteralPath $MpvArgumentsFile -Force
+
+    # Lua 脚本写入所有可用帧率属性（JSON），取首个正值用作 Layer 源帧率
+    $SourceFpsFile = Join-Path $LayerRoot 'lsfg-source-fps'
+    $SourceFpsLog = Join-Path $LayerRoot 'lsfg-source-fps-debug.log'
+    if (Test-Path -LiteralPath $SourceFpsFile) {
+        $fpsData = Get-Content -LiteralPath $SourceFpsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        $candidates = @($fpsData.container_fps, $fpsData.estimated_vf_fps,
+                        $fpsData.video_fps, $fpsData.display_fps)
+        $bestFps = $candidates | Where-Object { $_ -and $_ -gt 0 } | Select-Object -First 1
+        if ($bestFps) {
+            $env:LSFGVK_SOURCE_FPS = $bestFps.ToString(
+                [Globalization.CultureInfo]::InvariantCulture)
+            "picked source_fps=$bestFps from $($fpsData | ConvertTo-Json -Compress)" |
+                Out-File -LiteralPath $SourceFpsLog -Encoding utf8
+        } else {
+            "all fps props <= 0: $($fpsData | ConvertTo-Json -Compress)" |
+                Out-File -LiteralPath $SourceFpsLog -Encoding utf8
+        }
+        Remove-Item -LiteralPath $SourceFpsFile -Force
+    } else {
+        "source_fps file NOT FOUND" |
+            Out-File -LiteralPath $SourceFpsLog -Encoding utf8
+    }
 }
 
 # 从已启用 LSFG 的 mpv 切回普通播放时，子进程会继承环境变量，需要显式清理。.
@@ -106,5 +129,6 @@ if ($DebugLayer) {
     $env:VK_LOADER_DEBUG = 'error,warn,layer'
 }
 
-& $Mpv '--vo=gpu-next' '--gpu-api=vulkan' '--gpu-context=winvk' @MpvArguments
+# FIFO 模式确保 QueuePresentKHR 以源帧率调用，避免 MAILBOX 下 LSFG 误读显示器刷新率
+& $Mpv '--vo=gpu-next' '--gpu-api=vulkan' '--gpu-context=winvk' '--vulkan-swap-mode=fifo' @MpvArguments
 exit $LASTEXITCODE

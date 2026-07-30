@@ -1,159 +1,73 @@
-local msg = require "mp.msg"
-local utils = require "mp.utils"
-local legacy = mp.command_native_async == nil
-local config = {}
-local dir_cache = {}
+local msg = require 'mp.msg'
 
-function run(args)
-    if legacy then
-        return utils.subprocess({args = args})
+local running = false
+
+local function expand_path(path)
+    return mp.command_native({'expand-path', path})
+end
+
+local function show_result(success, result)
+    running = false
+
+    local stdout = result and result.stdout or ''
+    local stderr = result and result.stderr or ''
+    local status = result and result.status or -1
+
+    if stdout ~= '' then
+        msg.info(stdout)
     end
-    return mp.command_native({name = "subprocess", capture_stdout = true, playback_only = false, args = args})
-end
-
-function parent(path)
-    return string.match(path, "(.*)[/\\]")
-end
-
-function cache(path)
-    local p_path = parent(path)
-    if p_path == nil or p_path == "" or dir_cache[p_path] then return end
-    cache(p_path)
-    dir_cache[path] = 1
-end
-
-function mkdir(path)
-    if dir_cache[path] then return end
-    cache(path)
-    run({"git", "init", path})
-end
-
-function match(str, patterns)
-    for pattern in string.gmatch(patterns, "[^|]+") do
-        if string.match(str, pattern) then
-            return true
-        end
+    if stderr ~= '' then
+        msg.warn(stderr)
     end
-end
 
-function apply_defaults(info)
-    if info.git == nil then return false end
-    if info.whitelist == nil then info.whitelist = "" end
-    if info.blacklist == nil then info.blacklist = "" end
-    if info.dest == nil then info.dest = "~~/scripts" end
-    if info.branch == nil then info.branch = "master" end
-    return info
-end
-
-local function build_directory_string(dir, repo)
-    local str = ""
-    local contents = utils.readdir(dir)
-    if not contents then return msg.error("could not access local repo:", repo) end
-    for _, item in ipairs(contents) do
-        local path = dir..'/'..item
-        if utils.file_info(path).is_dir then
-            if item ~= ".git" then str = str..'/'..build_directory_string(path, repo)..'\n' end
-        else
-            str = str..(path:sub(repo:len()+2))..'\n'
-        end
-    end
-    return str
-end
-
-local function get_file_list(info)
-    if not info.local_repo then
-        return run({"git", "-C", info.edist, "ls-tree", "-r", "--name-only", "remotes/manager/"..info.branch}).stdout
+    if success and status == 0 then
+        mp.osd_message('安全更新完成，请查看控制台或更新报告', 5)
     else
-        return build_directory_string(info.local_repo, info.local_repo)
+        mp.osd_message('安全更新未完成，请查看控制台错误', 6)
+        msg.error('manager update failed, exit status:', status)
     end
 end
 
-function update(info)
-    info = apply_defaults(info)
-    if not info then return false end
-
-    local base = nil
-
-    info.edist = string.match(mp.command_native({"expand-path", info.dest}), "(.-)[/\\]?$")
-    mkdir(info.edist)
-
-    local files = {}
-
-    if info.local_repo then
-        info.local_repo = mp.command_native({"expand-path", info.local_repo})
-        if not utils.file_info(info.local_repo) then
-            info.local_repo = false
-            msg.warn("local repo not found - falling back to git")
-        end
+local function update_all()
+    if running then
+        mp.osd_message('更新任务正在运行', 3)
+        return
     end
 
-    if not info.local_repo then
-        run({"git", "-C", info.edist, "remote", "add", "manager", info.git})
-        run({"git", "-C", info.edist, "remote", "set-url", "manager", info.git})
-        run({"git", "-C", info.edist, "fetch", "manager", info.branch})
-    end
+    local config_dir = expand_path('~~/')
+    local helper = expand_path('~~/script-modules/manager-update.ps1')
+    local args = {
+        'powershell.exe',
+        '-NoLogo',
+        '-NoProfile',
+        '-NonInteractive',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-File',
+        helper,
+        '-ConfigDir',
+        config_dir,
+    }
 
-    for file in string.gmatch(get_file_list(info), "[^\r\n]+") do
-        local l_file = string.lower(file)
-        if info.whitelist == "" or match(l_file, info.whitelist) then
-            if info.blacklist == "" or not match(l_file, info.blacklist) then
-                table.insert(files, file)
-                if base == nil then base = parent(l_file) or "" end
-                while string.match(base, l_file) == nil do
-                    if l_file == "" then break end
-                    l_file = parent(l_file) or ""
-                end
-                base = l_file
-            end
-        end
-    end
+    running = true
+    mp.osd_message('正在安全检查更新，不会直接覆盖个性化修改…', 4)
+    msg.info('starting safe component update')
 
-    if base == nil then return false end
+    local command = {
+        name = 'subprocess',
+        args = args,
+        capture_stdout = true,
+        capture_stderr = true,
+        playback_only = false,
+    }
 
-    if base ~= "" then base = base.."/" end
-
-    if next(files) == nil then
-        print("no files matching patterns")
+    if mp.command_native_async then
+        mp.command_native_async(command, show_result)
     else
-        for _, file in ipairs(files) do
-            local based = string.sub(file, string.len(base)+1)
-            local p_based = parent(based)
-            if p_based and not info.flatten_folders then mkdir(info.edist.."/"..p_based) end
-
-            local c = ""
-            if info.local_repo then
-                local source = io.open(info.local_repo..'/'..file)
-                c = source:read("*a")
-                source:close()
-            else
-                c = string.match(run({"git", "-C", info.edist, "--no-pager", "show", "remotes/manager/"..info.branch..":"..file}).stdout, "(.-)[\r\n]?$")
-            end
-
-            local f = io.open(info.edist.."/"..(info.flatten_folders and file:match("[^/]+$") or based), "w")
-            f:write(c)
-            f:close()
-        end
+        local result = mp.command_native(command)
+        show_result(result and result.status == 0, result)
     end
-    return true
 end
 
-function update_all()
-    local f = io.open(mp.command_native({"expand-path", "~~/manager.json"}), "r")
-    if f then
-        local json = f:read("*all")
-        f:close()
-
-        local props = utils.parse_json(json or "")
-        if props then
-            config = props
-        end
-    end
-
-    for i, info in ipairs(config) do
-        print("updating", (info.git:match("([^/]+)%.git$") or info.git).."...")
-        if not update(info) then msg.error("FAILED") end
-    end
-    print("all files updated")
-end
-
-mp.add_key_binding(nil, "manager-update-all", update_all)
+mp.register_script_message('manager-update-all', update_all)
+mp.add_key_binding(nil, 'manager-update-all', update_all)

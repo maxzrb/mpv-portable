@@ -332,8 +332,17 @@ void Swapchain::updateTelemetry() noexcept {
     if (elapsed < 0.5)
         return;
 
-    const auto inputFps = static_cast<double>(this->telemetryInputFrames) / elapsed;
-    const auto outputFps = static_cast<double>(this->telemetryOutputFrames) / elapsed;
+    auto inputFps = static_cast<double>(this->telemetryInputFrames) / elapsed;
+
+    // Optimus / 无 VRR 显示器下 Present 速率可能不等于源帧率。
+    // 上层设置此环境变量时，用预设值代替计数值用于遥测和 OSD 显示。
+    if (const auto* srcFps = std::getenv("LSFGVK_SOURCE_FPS"); srcFps && *srcFps) {
+        try {
+            inputFps = std::stod(srcFps);
+        } catch (...) {}
+    }
+
+    const auto outputFps = inputFps * this->profile.multiplier;
     const auto updatedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
 

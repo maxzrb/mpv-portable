@@ -269,6 +269,36 @@ function TopBar:render()
 		end
 	end
 
+	-- 左上角置顶按钮；独立点击区域可避免触发全局左键暂停绑定。
+	do
+		local rect = {ax = ax, ay = ay, bx = ax + self.size, by = by}
+		local is_hover = get_point_to_rectangle_proximity(cursor, rect) <= 0
+		local is_active = state.ontop
+		local opacity = (is_hover or is_active) and 1 or config.opacity.controls
+		local button_fg = (is_hover or is_active) and bg or fg
+		local button_bg = (is_hover or is_active) and fg or bg
+
+		cursor:zone('primary_down', rect, function()
+			mp.command('cycle ontop; show-text "置顶:${ontop}"')
+		end)
+
+		local bg_size = self.size - margin
+		local bg_ax, bg_ay = rect.ax + margin, rect.ay + margin
+		local bg_bx, bg_by = bg_ax + bg_size, bg_ay + bg_size
+
+		ass:rect(bg_ax, bg_ay, bg_bx, bg_by, {
+			color = button_bg, opacity = visibility * opacity, radius = state.radius,
+		})
+		ass:icon(bg_ax + bg_size / 2, bg_ay + bg_size / 2, bg_size * 0.5, 'push_pin', {
+			color = button_fg,
+			border_color = button_bg,
+			opacity = visibility,
+			border = options.text_border * state.scale,
+		})
+
+		ax = rect.bx
+	end
+
 	-- Window title
 	local main_title, alt_title = self.render_titles.main, self.render_titles.alt
 	if main_title or state.has_playlist then

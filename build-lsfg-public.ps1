@@ -36,6 +36,12 @@ Copy-Item -LiteralPath $LayerDll -Destination $LayerTarget
 Copy-Item -LiteralPath $LayerManifest -Destination $LayerTarget
 Copy-Item -LiteralPath (Join-Path $Root 'start-mpv-lsfg.ps1') -Destination $Stage
 
+# LSFG 控制脚本自身也随包更新，避免 Lua 侧改动未包含在 Base 中
+$ControlScriptDest = Join-Path $Stage 'portable_config/scripts'
+$null = New-Item -ItemType Directory -Force -Path $ControlScriptDest
+Copy-Item -LiteralPath (Join-Path $Root 'portable_config/scripts/lsfg_control.lua') `
+    -Destination $ControlScriptDest
+
 # 保留目标目录和明确的用户自备说明，但不放入任何 Steam DLL。
 $LosslessTarget = Join-Path $Stage 'Lossless Scaling'
 $null = New-Item -ItemType Directory -Force -Path $LosslessTarget
@@ -82,9 +88,14 @@ MPV LSFG 公开扩展包 v${Version}
 
 安装与覆盖顺序：
   01. 01-mpv-base-v${Version}.7z
-  02. 02-mpv-config-v${Version}.7z（同版本 Base 已含 Config，可跳过）
-  03. 03-mpv-extras-v${Version}.7z.001（将 .002 放在同目录，只解压 .001）
-  04. 04-mpv-lsfg-addon-v${Version}.7z（本包，建议最后安装）
+  02. 02-mpv-extras-v${Version}.7z.001（将 .002 放在同目录，只解压 .001）
+  03. 03-mpv-fasterwhisper-addon-v${Version}.7z（可选 AI 字幕扩展）
+  04. 04-mpv-lsfg-addon-v${Version}.7z（本包）
+  05. 05-mpv-config-v${Version}.7z（个人设置，最后安装覆盖）
+
+包边界说明：
+  LSFG 控制脚本随本包更新以保证联动可用性。
+  以后单独更新 Config 不需要重新解压本包。
 
 包边界说明：
   LSFG 菜单、控制和状态脚本已经包含在同版本 Base/Config 中。
