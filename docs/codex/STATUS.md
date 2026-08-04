@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
-| **最新发布提交** | 待打 tag：`v1.3.2` |
-| **工作区** | v1.3.2 已构建并校验，准备发布；Release 上传后补记提交哈希 |
+| **最新发布提交** | `9f86218`（tag: `v1.3.2`） |
+| **工作区** | v1.3.2 已发布；工作树干净（忽略的构建产物除外） |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.3.2（已构建，发布中） |
-| **上次操作** | 构建并校验 v1.3.2 六个包，准备创建 Release |
+| **项目版本** | v1.3.2（已发布） |
+| **上次操作** | 发布 v1.3.2：五个公开包上传 GitHub Release，个人全量包仅本地保留 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -755,3 +755,11 @@ c:\Program portable\mpv2\
 - **构建**: `build-all-packages.ps1 -Version 1.3.2 -IncludePrivate` 在 03 包压缩期间超时；01～03 已完成且完整，随后补跑 04、05 与全量包。
 - **产物**: 01 Base、02 Extras 分卷、03 FW、04 LSFG、05 Config、`mpv-full-private-v1.3.2.7z`。
 - **验证**: 六个归档均通过 7-Zip 完整性测试；SHA-256 已写入版本记录。
+
+### 2026-08-04 15:12 会话: 发布 v1.3.2
+
+- **Tag**: `v1.3.2` 指向 `9f86218`，`master` 与 `origin/master` 同步。
+- **Release**: https://github.com/maxzrb/mpv-portable/releases/tag/v1.3.2
+- **远端资产**: 01 Base、02 Extras 分卷、03 FW、04 LSFG、05 Config 五个公开包；未上传个人全量包。
+- **清理**: `build/` 暂存目录已删除；`release/` 保留 v1.3.2 六包与 SHA-256 记录。
+- **Git 状态**: 工作树干净（忽略产物除外），无需额外提交。
