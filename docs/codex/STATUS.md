@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
 | **最新发布提交** | `f4fa2f6`（tag: `v1.3.1`） |
-| **工作区** | v1.3.1 已发布；工作树干净 |
+| **工作区** | v1.3.1 已发布；当前有未提交的个人配置、打包脚本和 Anime4K 预设改动 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.3.1（已发布） |
-| **上次操作** | 发布 v1.3.1：五包重构、LSFG env var 遥测修正、依赖升级 |
+| **上次操作** | 精简 Anime4K 预设菜单：去掉显卡型号，只保留 HQ/Fast 两档与模式说明 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -47,6 +47,7 @@ c:\Program portable\mpv2\
 - [x] 修复 manager 的 PlayKit 分支、quality-menu 白名单、同名脚本覆盖和 Git blob 误报
 - [x] 安装 Faster-Whisper-XXL 公开版 r245.4，从 Extras 拆分为独立 04 增量包
 - [x] 恢复“着色器 / 视频滤镜”一级分类，在完整技术分类前补充少量互斥推荐入口
+- [x] 为 Anime4K v4 增加 HQ/Fast 两档 A、B、C、A+A、B+B、C+A 共 12 套官方标准预设
 - [x] 去掉 VapourSynth 菜单中间层，让补帧、超分、降噪按用途直达
 - [x] 将完整着色器库按用途重组，同时保留按原算法家族查找的专家库
 - [x] 允许补帧、超分、降噪同时启用，并提供竖排状态 OSD 与直属清空入口
@@ -710,3 +711,39 @@ c:\Program portable\mpv2\
   - 五个公开包上传 GitHub Release，个人全量包仅本地保留
   - SHA-256 核验: 01 `30790058` / 02 `94959d1d`+`abc25eac` / 03 `e10b1a4a` / 04 `2e2e53cc` / 05 `e2d18755`
 - **Git 状态**: 全部提交已推送到 `origin/master`；工作树干净（除 `buildtool/` 未跟踪）
+
+### 2026-08-04 14:21 会话: 新增 Anime4K v4 HQ/Fast 标准预设
+
+- **目标**:
+  - 不引入 ModernZ 新主题，继续使用现有 uosc。
+  - 将 Anime4K 官方推荐的标准着色器组合整理成可直接选择的预设，解决用户面对大量单独着色器时不清楚链条顺序的问题。
+- **实现**:
+  - 在 `portable_config/profiles.conf` 新增 12 个互斥配置组：HQ/Fast 各含 Mode A、B、C、A+A、B+B、C+A。
+  - HQ 档按官方示例面向 GTX 1080、RTX 2070、RTX 3060、RX 590、Vega 56、5700 XT、6600 XT 及以上；Fast 档面向 GTX 980、GTX 1060、RX 570 及以下。
+  - 在 `portable_config/input.conf` 的“着色器 > 推荐 > Anime4K 标准预设”下新增 HQ/Fast 两组菜单入口。
+  - 菜单标明 Mode A 主要用于多数 1080p、Mode B 主要用于多数 720p、Mode C 用于 480p 或低退化图像；二级模式注明仅建议至少 2× 放大时使用。
+  - 每次选择都使用 `glsl-shaders` 覆盖完整列表，避免与之前启用的其他着色器意外叠加。
+- **官方依据**:
+  - Anime4K v4 Windows/mpv 官方 High-end 与 Low-end 模板中的 12 条链顺序。
+  - Anime4K Advanced Usage 对 A/B/C 适用画面、二级模式及顺序要求的说明。
+- **验证**:
+  - 12 个 profile 均可被 mpv `--show-profile` 正确展开。
+  - 12 个菜单入口与 14 个唯一 Anime4K 文件路径静态检查通过，引用文件全部存在。
+  - 12/12 套预设均使用正式 `gpu-next`/D3D11 渲染链完成独立着色器编译与单帧播放烟测，无加载或编译错误。
+  - `dyn_menu.lua` 完整解析现有菜单无错误；修改文件保持 UTF-8、LF；`git diff --check` 通过。
+- **文件变更**:
+  - `portable_config/profiles.conf`
+  - `portable_config/input.conf`
+  - `docs/codex/STATUS.md`
+  - `version/工作进度.md`
+- **Git 状态**:
+  - `master` 与 `origin/master` 无已知提交差异。
+  - 工作区此前已有 `.gitignore`、`build-full-private.ps1`、`portable_config/mpv.conf` 的未提交用户改动；本轮没有覆盖这些文件。
+  - Anime4K 预设与 HandShake 记录尚未提交或推送，建议按本次功能作为一个逻辑提交。
+
+### 2026-08-04 14:24 会话: 精简 Anime4K 预设菜单显卡描述
+
+- **调整**: 应使用者要求，菜单子目录不再列出具体显卡型号（GTX/RTX/RX/Vega 等），只保留 `HQ`、`Fast` 两档和模式适用说明；配置组与着色器链不变。
+- **文件变更**: `portable_config/input.conf`、`docs/codex/STATUS.md`、`version/工作进度.md`。
+- **验证**: 12 个菜单入口数量不变；Anime4K 预设行不再含显卡型号；`dyn_menu` 解析无错误；UTF-8/LF 与 `git diff --check` 通过。
+- **Git 状态**: 未提交改动清单不变；建议后续连同 Anime4K 预设作为一个逻辑提交。

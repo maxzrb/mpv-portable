@@ -124,6 +124,7 @@ $RECYCLE.BIN/
 # --- 打包临时文件 ---
 /build/
 /release/
+/buildtool/
 /tmp/
 *.7z
 *.zip

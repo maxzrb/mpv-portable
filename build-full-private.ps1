@@ -52,9 +52,14 @@ Expand-Package $LsfgArchive
 Expand-Package $ConfigArchive
 
 # 全量备份 Lossless Scaling 目录（含 Lossless.dll 及所有语言资源）
+# 04 公开包可能已留有空 Lossless Scaling 占位目录，先移除避免 Copy-Item 嵌套
+$lsTarget = Join-Path $Stage 'Lossless Scaling'
 if (Test-Path -LiteralPath $LosslessDir) {
     Write-Host "复制 Lossless Scaling 完整目录..." -ForegroundColor Gray
-    Copy-Item -LiteralPath $LosslessDir -Destination (Join-Path $Stage 'Lossless Scaling') -Recurse -Force
+    if (Test-Path -LiteralPath $lsTarget) {
+        Remove-Item -LiteralPath $lsTarget -Recurse -Force
+    }
+    Copy-Item -LiteralPath $LosslessDir -Destination $lsTarget -Recurse -Force
 }
 
 $PrivateReadme = Join-Path $Stage 'README-个人私用全量包.txt'
