@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
-| **最新发布提交** | `f4fa2f6`（tag: `v1.3.1`） |
-| **工作区** | v1.3.1 已发布；当前有未提交的个人配置、打包脚本和 Anime4K 预设改动 |
+| **最新发布提交** | 待打 tag：`v1.3.2` |
+| **工作区** | v1.3.2 已构建并校验，准备发布；Release 上传后补记提交哈希 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.3.1（已发布） |
-| **上次操作** | 精简 Anime4K 预设菜单：去掉显卡型号，只保留 HQ/Fast 两档与模式说明 |
+| **项目版本** | v1.3.2（已构建，发布中） |
+| **上次操作** | 构建并校验 v1.3.2 六个包，准备创建 Release |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -747,3 +747,11 @@ c:\Program portable\mpv2\
 - **文件变更**: `portable_config/input.conf`、`docs/codex/STATUS.md`、`version/工作进度.md`。
 - **验证**: 12 个菜单入口数量不变；Anime4K 预设行不再含显卡型号；`dyn_menu` 解析无错误；UTF-8/LF 与 `git diff --check` 通过。
 - **Git 状态**: 未提交改动清单不变；建议后续连同 Anime4K 预设作为一个逻辑提交。
+
+### 2026-08-04 15:05 会话: 提交 v1.3.2 前置改动、清理缓存并构建六包
+
+- **提交**: `d3f41da` 包含 Anime4K 预设、字幕颜色、全量包嵌套修复和此前的状态记录。
+- **清理**: 删除 `build/`（约 14.4 GB）、`release/` 旧 v1.3.1 产物（约 18.9 GB）、`tmp/build-tools` 与运行缓存。
+- **构建**: `build-all-packages.ps1 -Version 1.3.2 -IncludePrivate` 在 03 包压缩期间超时；01～03 已完成且完整，随后补跑 04、05 与全量包。
+- **产物**: 01 Base、02 Extras 分卷、03 FW、04 LSFG、05 Config、`mpv-full-private-v1.3.2.7z`。
+- **验证**: 六个归档均通过 7-Zip 完整性测试；SHA-256 已写入版本记录。
