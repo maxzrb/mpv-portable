@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
-| **最新发布提交** | `60a157b`（tag: `v1.4.0`）；v1.4.1 构建完成待发布 |
-| **工作区** | v1.4.1 六包已构建并通过验证（7z t/门禁/SHA-256）；构建记录待提交 |
+| **最新发布提交** | `909dede`（tag: `v1.4.1`） |
+| **工作区** | v1.4.1 已正式发布；v1.4.0 Release 与标签已删除合并；个人全量包仅本地 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.4.1（构建完成，待发布） |
-| **上次操作** | v1.4.1 构建与验证：01~05 + 全量包全部通过 7z t 与门禁，SHA-256 已写入版本迭代记录 |
+| **项目版本** | v1.4.1（已发布） |
+| **上次操作** | v1.4.1 正式发布（合并 v1.4.0）：6 个公开资产上传完成，v1.4.0 Release/标签已删除 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1476,3 +1476,16 @@ c:\Program portable\mpv2\
   - 分卷大小符合 GitHub 限制。
   - SHA-256 已写入 `version/版本迭代记录.md`（v1.4.1 一节）。
 - **Git 状态**: `master` 领先 `origin/master` 1 个提交（`9ca1673` 未推送）；构建记录待提交；按用户要求停在 Release 创建之前。
+
+### 2026-08-08 00:19 会话: v1.4.1 正式发布（合并 v1.4.0）
+
+- **用户指令**: 删除原 v1.4.0 GitHub Release，合并到 v1.4.1 发布。
+- **执行**:
+  - 推送 `master`（`9ca1673` + `909dede`）至 `origin/master`。
+  - 创建并推送 annotated tag `v1.4.1`（`f190ee4`）。
+  - 删除 v1.4.0 GitHub Release（6 资产）及远端/本地 tag `v1.4.0`。
+  - 创建正式 Release v1.4.1（非草稿、非预发布），上传 6 个公开资产：01、02.001、02.002、03、04、05；个人全量包未上传。
+  - Release 说明合并 v1.4.0 + v1.4.1 更新内容，注明 uosc 源自 mpv-Yaozhi。
+- **验证**: 远端 6 资产全部 uploaded，SHA-256 与本地记录一致；`git ls-remote --tags origin v1.4.0` 无结果、`v1.4.1` 存在；`master` 与 `origin/master` 同步。
+- **清理**: build/ 暂存目录已清空；tmp/ 删除中断下载的重复 Yaozhi 包（保留用户提供的 `Yaozhi-mpv-8.7+.7z`）；临时 release notes 已删除。
+- **Git 状态**: 发布结果记录待提交。
