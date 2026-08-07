@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交） |
-| **最新发布提交** | `e87365b` + `d911760`（v1.4.0 构建中，标签待创建） |
-| **工作区** | v1.4.0 六包已构建并通过验证；构建/校验和记录已更新，待提交后打标签发布 |
+| **最新发布提交** | `60a157b`（tag: `v1.4.0`） |
+| **工作区** | v1.4.0 已正式发布，五个公开资产已上传，个人全量包仅本地；发布结果记录待提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.4.0（构建完成，发布中） |
-| **上次操作** | v1.4.0 构建与验证：01~05 + 全量包全部通过 7z t 与门禁，SHA-256 已写入版本迭代记录 |
+| **项目版本** | v1.4.0（已发布） |
+| **上次操作** | v1.4.0 正式发布：GitHub Release 已创建，6 个公开资产上传完成，远端 SHA-256 与本地一致 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1386,3 +1386,18 @@ c:\Program portable\mpv2\
   - 分卷大小符合 GitHub 限制。
   - SHA-256 已写入 `version/版本迭代记录.md`。
 - **Git 状态**: `master` 领先 `origin/master` 3 个提交（d6498b9 + e87365b + d911760，均未推送）；构建记录待提交。
+
+### 2026-08-07 21:22 会话: v1.4.0 正式发布
+
+- **提交与推送**:
+  - `60a157b` docs: record v1.4.0 build, checksums and release plan（构建记录/校验和）。
+  - 打标签 `v1.4.0`（annotated）并推送；远端 tag 确认 `2e171d5...`。
+  - `master` 与 `origin/master` 同步。
+- **Release**:
+  - https://github.com/maxzrb/mpv-portable/releases/tag/v1.4.0
+  - 状态：正式（非草稿、非预发布）。
+  - 6 个资产全部上传：01、02.001、02.002、03、04、05；远端 SHA-256 与本地一致；未上传个人全量包。
+  - 文案已包含 uosc 界面设计源自 mpv-Yaozhi 的说明（用户要求补充）。
+- **中断恢复**: 首次 gh release create 被中断留下草稿（3 资产），已删除草稿后重新创建并完整上传。
+- **清理**: build/ 暂存目录（03/04/05/private）与临时 release notes 已删除；release/ 保留 6 个公开包 + 全量包 + 校验记录。
+- **Git 状态**: 发布结果记录待提交；提交后 master 仍与 origin 同步。
