@@ -5,12 +5,12 @@
 | 项目 | 状态 |
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
-| **分支** | `master`（领先 `origin/master` 1 个提交） |
-| **最新发布提交** | `60a157b`（tag: `v1.4.0`） |
-| **工作区** | v1.4.0 已正式发布并收尾；过期构建产物（v1.3.2 全套包、tmp 调试文件）已清理 |
+| **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
+| **最新发布提交** | `60a157b`（tag: `v1.4.0`）；v1.4.1 构建完成待发布 |
+| **工作区** | v1.4.1 六包已构建并通过验证（7z t/门禁/SHA-256）；构建记录待提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.4.0（已发布） |
-| **上次操作** | 移植 uosc 音量条样式：竖向圆角轨道 + 青色填充 + 圆形把手 + 底部大号数字 + 半透明悬浮面板 |
+| **项目版本** | v1.4.1（构建完成，待发布） |
+| **上次操作** | v1.4.1 构建与验证：01~05 + 全量包全部通过 7z t 与门禁，SHA-256 已写入版本迭代记录 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1457,3 +1457,22 @@ c:\Program portable\mpv2\
 - **验证**: `volume-max=130` 实测确认（mpv.conf 默认，未显式设置）；标记分数 0.7692；真实播放音量 42→100 渲染无错误，RENDER-DONE。
 - **说明**: 前一轮测试日志提前退出是用户手动关闭窗口，非脚本问题。
 - **Git 状态**: 修改未提交（随下版发布）；`master` 与 `origin/master` 同步。
+
+### 2026-08-07 22:35 会话: v1.4.1 构建与验证（发布前）
+
+- **版本确认**: 用户确认 v1.4.1。
+- **提交**:
+  - `9ca1673` feat: 移植 Yaozhi 音量条样式并修复启动页显示（6 文件：Volume.lua、idle-branding-image.lua、idle_branding.conf、发布流程.md、两份进度记录）。
+- **发布前验证**: luajit 语法通过、git diff --check 通过、完整配置真实播放 SMOKE-V141-OK 无 [e] 错误。
+- **构建**（按《发布流程.md》第 4 节）:
+  - `build-release.ps1 -Version 1.4.1` → 01 Base（95.5MB）+ 02 Extras 分卷（1900MB / 745.4MB）。
+  - `build-fasterwhisper-public.ps1` → 03（1407.6MB）。
+  - `build-lsfg-public.ps1` → 04（3.0MB，内置 Lossless.dll）。
+  - `build-config-public.ps1` → 05（32.3MB）。
+  - `build-full-private.ps1` → 个人全量包（4186.5MB，仅本地）。
+- **构建后验证**:
+  - 七个归档 7z t 全部 Everything is Ok。
+  - 门禁：01 含 script-assets（680 项）、无 window_state.conf；05 无 script-assets、无 window_state.conf；04 仅两个 DLL（lsfg-vk-layer.dll + Lossless.dll）、0 EXE。
+  - 分卷大小符合 GitHub 限制。
+  - SHA-256 已写入 `version/版本迭代记录.md`（v1.4.1 一节）。
+- **Git 状态**: `master` 领先 `origin/master` 1 个提交（`9ca1673` 未推送）；构建记录待提交；按用户要求停在 Release 创建之前。
