@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交） |
 | **最新发布提交** | `60a157b`（tag: `v1.4.0`） |
-| **工作区** | v1.4.0 已正式发布，五个公开资产已上传，个人全量包仅本地；发布结果记录待提交 |
+| **工作区** | v1.4.0 已正式发布并收尾；过期构建产物（v1.3.2 全套包、tmp 调试文件）已清理 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.0（已发布） |
-| **上次操作** | v1.4.0 正式发布：GitHub Release 已创建，6 个公开资产上传完成，远端 SHA-256 与本地一致 |
+| **上次操作** | 清理过期构建产物：删除 v1.3.2 全套 7 包与 tmp 调试文件，release/ 仅保留 v1.4.0 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1401,3 +1401,12 @@ c:\Program portable\mpv2\
 - **中断恢复**: 首次 gh release create 被中断留下草稿（3 资产），已删除草稿后重新创建并完整上传。
 - **清理**: build/ 暂存目录（03/04/05/private）与临时 release notes 已删除；release/ 保留 6 个公开包 + 全量包 + 校验记录。
 - **Git 状态**: 发布结果记录待提交；提交后 master 仍与 origin 同步。
+
+### 2026-08-07 21:30 会话: 清理过期构建产物
+
+- **用户需求**: 顺便清理过期构建产物。
+- **清理**:
+  - `release/` 删除 v1.3.2 全套 7 个包（01~05 公开包 + 个人全量包，约 8.5GB）：01、02.001、02.002、03、04、05、mpv-full-private-v1.3.2.7z。
+  - `tmp/` 删除 6 个调试/审计临时文件：list_scripts.log、menu_dump.json、menu_dump.log、menu_dump.lua、menu_dump2.log、menu_dump3.log。
+- **保留**: `release/` 仅保留 v1.4.0 七个包（01~05 + 分卷 + 个人全量包）；`build/` 已空；旧版本校验和仍在 `version/版本迭代记录.md` 历史节。
+- **Git 状态**: 先前补充的发布流程提交 `229892d` 已推送，`master` 与 `origin/master` 同步。
