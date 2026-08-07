@@ -6,11 +6,11 @@
 |------|------|
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交） |
-| **最新发布提交** | `9f86218`（tag: `v1.3.2`） |
-| **工作区** | 依赖维护已提交为 `d6498b9`；官方核心兼容 UI/启动页/音频直通移植尚未提交；uosc 深度融合与进度条/底栏修正亦未提交；《发布流程.md》与 AGENTS.md 强制引用已建立；04 内置 Lossless.dll、启动 Logo 归 01、窗口默认 auto/auto 已确认 |
+| **最新发布提交** | `e87365b` + `d911760`（v1.4.0 构建中，标签待创建） |
+| **工作区** | v1.4.0 六包已构建并通过验证；构建/校验和记录已更新，待提交后打标签发布 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
-| **项目版本** | v1.3.2（已发布） |
-| **上次操作** | 包边界确认：启动 Logo 素材归 01 Base、05 排除；窗口默认重置 auto/auto/跟随 mpv.conf；01/05 排除 window_state.conf；实测构建验证通过 |
+| **项目版本** | v1.4.0（构建完成，发布中） |
+| **上次操作** | v1.4.0 构建与验证：01~05 + 全量包全部通过 7z t 与门禁，SHA-256 已写入版本迭代记录 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1367,3 +1367,22 @@ c:\Program portable\mpv2\
 - **Private**: 01→05 合并 + Lossless Scaling 完整目录，逻辑无新增需求。
 - **结论**: 发布脚本覆盖 mpv 全构建，无发现缺文件；settings.xml 不入包但 updater.ps1 会自动生成，非缺口。正式发布前建议跑一次完整 `build-all-packages.ps1 -IncludePrivate` 验证大包。
 - **Git 状态**: 只读核验，无新文件改动；工作区仍为未提交状态。
+
+### 2026-08-07 20:52 会话: v1.4.0 构建与验证
+
+- **版本确认**: 用户确认 v1.4.0。
+- **提交**:
+  - `e87365b` feat: uosc 深度融合与官方核心兼容功能（706 文件，含 676 个 Logo 素材）。
+  - `d911760` docs: 建立强制发布流程并调整发布包边界（6 文件）。
+- **构建**（按《发布流程.md》第 4 节，顺序执行）:
+  - `build-release.ps1 -Version 1.4.0` → 01 Base（95.5MB）+ 02 Extras 分卷（1900MB / 745.4MB），7 分 29 秒。
+  - `build-fasterwhisper-public.ps1` → 03（1408MB）。
+  - `build-lsfg-public.ps1` → 04（3.1MB，内置 Lossless.dll）。
+  - `build-config-public.ps1` → 05（33MB）。
+  - `build-full-private.ps1` → 个人全量包（4187MB，仅本地）。
+- **验证**:
+  - 六个归档 7z t 全部 Everything is Ok。
+  - 门禁：01 含 script-assets（680 项）、无 window_state.conf；05 无 script-assets、无 window_state.conf；04 仅两个 DLL（lsfg-vk-layer.dll + Lossless.dll）、0 EXE、无 LosslessScaling.exe/语言资源；02 的 `operations/build/` 匹配为 Python pip 正常路径，非构建目录泄漏；03 无违规项。
+  - 分卷大小符合 GitHub 限制。
+  - SHA-256 已写入 `version/版本迭代记录.md`。
+- **Git 状态**: `master` 领先 `origin/master` 3 个提交（d6498b9 + e87365b + d911760，均未推送）；构建记录待提交。
