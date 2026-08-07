@@ -29,6 +29,7 @@ defaults = {
 	timeline_cache = true,
 	timeline_heatmap = 'overlay',
 	timeline_mbtn_right = '',
+	media_info = true,
 
 	controls =
 	'menu,gap,<video,audio>subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,<video,audio>speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',
@@ -36,6 +37,9 @@ defaults = {
 	controls_margin = 8,
 	controls_spacing = 2,
 	controls_persistency = '',
+	button_tooltips = true,
+	idle_branding = true,
+	chapter_display = false,
 
 	volume = 'right',
 	volume_size = 40,
@@ -50,6 +54,7 @@ defaults = {
 	menu_item_height = 36,
 	menu_min_width = 260,
 	menu_padding = 4,
+	menu_font = '',
 	menu_type_to_search = true,
 
 	top_bar = 'no-border',
@@ -151,6 +156,16 @@ local config_defaults = {
 		error = serialize_rgba('ff616e').color,
 		match = serialize_rgba('69c5ff').color,
 		heatmap = serialize_rgba('00adee').color,
+		menu_background = serialize_rgba('10243a').color,
+		menu_foreground = serialize_rgba('829db5').color,
+		menu_text = serialize_rgba('e8f0f6').color,
+		menu_selection = serialize_rgba('6e9bc3').color,
+		menu_active = serialize_rgba('7aafd6').color,
+		menu_title = serialize_rgba('b7cfe2').color,
+		menu_title_text = serialize_rgba('17324a').color,
+		timeline_track = serialize_rgba('607986').color,
+		time_current = serialize_rgba('d8e7ed').color,
+		time_muted = serialize_rgba('a1b4be').color,
 	},
 	opacity = {
 		timeline = 0.9,
@@ -282,6 +297,11 @@ function update_config()
 			return clamp(0, tonumber(value) or config.opacity[key], 1)
 		end
 	))
+	if not options.chapter_display then
+		config.opacity.chapters = 0
+	elseif config.opacity.chapters <= 0 then
+		config.opacity.chapters = config_defaults.opacity.chapters
+	end
 
 	-- Color
 	config.color = table_assign({}, config_defaults.color, serialize_key_value_list(options.color, function(value)
@@ -303,6 +323,44 @@ function update_config()
 	update_load_types()
 end
 update_config()
+
+function persist_uosc_option(name, value)
+	local config_path = mp.command_native({'expand-path', '~~/script-opts/uosc.conf'})
+	local file = io.open(config_path, 'rb')
+	local content = file and file:read('*a') or ''
+	if file then file:close() end
+
+	local serialized = type(value) == 'boolean' and (value and 'yes' or 'no') or tostring(value)
+	local pattern_name = name:gsub('([^%w])', '%%%1')
+	local replaced
+	content, replaced = content:gsub(
+		'^([ \t]*' .. pattern_name .. '[ \t]*=)[^\r\n]*',
+		'%1' .. serialized,
+		1
+	)
+	if replaced == 0 then
+		content, replaced = content:gsub(
+			'([\r\n][ \t]*' .. pattern_name .. '[ \t]*=)[^\r\n]*',
+			'%1' .. serialized,
+			1
+		)
+	end
+	if replaced == 0 then
+		local newline = content:find('\r\n', 1, true) and '\r\n' or '\n'
+		if content ~= '' and not content:match('[\r\n]$') then content = content .. newline end
+		content = content .. name .. '=' .. serialized .. newline
+	end
+
+	file = io.open(config_path, 'wb')
+	if not file then
+		msg.error('Could not persist uosc option: ' .. tostring(config_path))
+		return false
+	end
+	file:write(content)
+	file:close()
+	msg.info(string.format('Persisted uosc option: %s=%s', name, serialized))
+	return true
+end
 
 -- Default menu items
 function create_default_menu_items()
@@ -871,6 +929,15 @@ bind_command('audio', create_select_tracklist_type_menu_opener({
 bind_command('video', create_select_tracklist_type_menu_opener({
 	title = t('Video'), type = 'video', prop = 'vid', load_command = 'script-binding uosc/load-video',
 }))
+bind_command('tracks', create_tracks_menu_opener())
+bind_command('secondary-subtitles', create_select_tracklist_type_menu_opener({
+	title = t('Secondary subtitles'),
+	type = 'sub',
+	prop = 'secondary-sid',
+	enable_prop = 'secondary-sub-visibility',
+	load_command = 'script-binding uosc/load-subtitles',
+	download_command = 'script-binding uosc/download-subtitles',
+}))
 bind_command('playlist', create_self_updating_menu_opener({
 	title = t('Playlist'),
 	type = 'playlist',
@@ -1147,6 +1214,56 @@ mp.register_script_message('set', function(name, value)
 	external[name] = value
 	Elements:trigger('external_prop_' .. name, value)
 end)
+local function publish_idle_branding_state()
+	local value = options.idle_branding and 'yes' or 'no'
+	mp.set_property('user-data/uosc/idle-branding', value)
+	mp.commandv('script-message-to', 'idle_branding_image', 'branding-state', value)
+end
+mp.register_script_message('idle-branding-toggle', function(value)
+	local requested = tostring(value or 'toggle'):lower()
+	local enabled
+	if requested == 'yes' or requested == 'on' or requested == 'true' or requested == '1' then
+		enabled = true
+	elseif requested == 'no' or requested == 'off' or requested == 'false' or requested == '0' then
+		enabled = false
+	else
+		enabled = not options.idle_branding
+	end
+
+	options.idle_branding = enabled
+	handle_options({idle_branding = true})
+	persist_uosc_option('idle_branding', enabled)
+	publish_idle_branding_state()
+	request_render()
+	mp.osd_message(enabled and '启动页：开启' or '启动页：关闭', 2)
+end)
+publish_idle_branding_state()
+local function publish_chapter_display_state()
+	mp.set_property(
+		'user-data/uosc/chapter-display',
+		options.chapter_display and 'yes' or 'no'
+	)
+end
+mp.register_script_message('chapter-display-toggle', function(value)
+	local requested = tostring(value or 'toggle'):lower()
+	if requested == 'yes' or requested == 'on' or requested == 'true' or requested == '1' then
+		options.chapter_display = true
+	elseif requested == 'no' or requested == 'off' or requested == 'false' or requested == '0' then
+		options.chapter_display = false
+	else
+		options.chapter_display = not options.chapter_display
+	end
+
+	handle_options({chapter_display = true})
+	persist_uosc_option('chapter_display', options.chapter_display)
+	publish_chapter_display_state()
+	if options.chapter_display then Elements:flash({'timeline'}) end
+	mp.osd_message(
+		options.chapter_display and '视频章节显示：开启' or '视频章节显示：关闭',
+		2
+	)
+end)
+publish_chapter_display_state()
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(comma_split(elements)) end)
 mp.register_script_message('set-min-visibility', function(visibility, elements)
 	local fraction = tonumber(visibility)
@@ -1166,6 +1283,7 @@ local constructors = {
 	pause_indicator = require('elements/PauseIndicator'),
 	top_bar = require('elements/TopBar'),
 	timeline = require('elements/Timeline'),
+	media_info = options.media_info and require('elements/MediaInfo'),
 	controls = options.controls and options.controls ~= 'never' and require('elements/Controls'),
 	volume = itable_index_of({'left', 'right'}, options.volume) and require('elements/Volume'),
 }

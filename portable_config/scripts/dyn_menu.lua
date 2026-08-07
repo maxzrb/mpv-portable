@@ -624,6 +624,8 @@ local function parse_input_conf(conf)
         if c and (not o.uosc_syntax) then return end
         local key, cmd = line:match('%s*([%S]+)%s+(.-)%s*$')
         if key and key:match('^#%S+') then return end
+        -- `#!` 是 uosc 专用菜单语法，不应混入 mpv 原生菜单（menu-data）
+        if cmd and cmd:match('%s#!%s') then return end
         return ((o.uosc_syntax and c) and '' or key), cmd
     end
 

@@ -39,6 +39,39 @@ function open_command_menu(data, opts)
 	return menu
 end
 
+-- 音频源码直通只调用 mpv 官方 audio-spdif/WASAPI 选项。
+mp.register_script_message('open-audio-passthrough-menu', function()
+	local current = mp.get_property_native('user-data/audio-passthrough/mode') or 'off'
+	local enabled = mp.get_property_native('user-data/audio-passthrough/enabled') == 'yes'
+	local device = mp.get_property_native('user-data/audio-passthrough/device') or 'Windows 默认'
+	local audio = mp.get_property_native('user-data/audio-passthrough/audio') or '未加载音轨'
+	local choices = {
+		{value = 'off', title = '自动解码（PCM）', hint = '安全默认'},
+		{value = 'home', title = 'Dolby + DTS 全部直通', hint = 'HDMI/eARC'},
+		{value = 'dolby', title = '仅 Dolby 直通', hint = 'AC-3 / E-AC-3 / TrueHD'},
+		{value = 'dts', title = '仅 DTS 直通', hint = 'DTS / DTS-HD'},
+	}
+	local items = {
+		{title = '当前状态', hint = enabled and '已开启' or '自动解码', selectable = false, muted = true},
+		{title = '输出设备', hint = device, selectable = false, muted = true},
+		{title = '当前音轨', hint = audio, selectable = false, muted = true},
+	}
+	for _, choice in ipairs(choices) do
+		items[#items + 1] = {
+			title = choice.title,
+			hint = choice.hint,
+			active = current == choice.value,
+			value = {'script-message-to', 'audio_passthrough', 'set', choice.value},
+		}
+	end
+	open_command_menu({
+		type = 'audio_passthrough',
+		title = '音频源码直通',
+		items = items,
+		footnote = '请先在 Windows 或电视中选择 HDMI/eARC 回音壁或功放',
+	})
+end)
+
 ---@param opts? OpenCommandMenuOptions
 function toggle_menu_with_items(opts)
 	if Menu:is_open('menu') then
@@ -379,6 +412,82 @@ function create_select_tracklist_type_menu_opener(opts)
 		on_key = handle_key,
 		actions_place = 'outside',
 		on_paste = function(event) load_track(opts.type, event.value) end,
+	})
+end
+
+-- 轨道总览：把视频/音频/字幕轨合并到一个 uosc 菜单，组间用分隔线
+function create_tracks_menu_opener()
+	local function build_title(track, prefix)
+		local type = track.type
+		local title = track.title or ''
+		if title == '' then
+			title = string.format('%s %02.f', type:sub(1, 1):upper() .. type:sub(2), track.id)
+		end
+		local hints = {}
+		if track.codec and track.codec ~= '' then hints[#hints + 1] = track.codec end
+		if track['demux-w'] and track['demux-h'] then
+			hints[#hints + 1] = track['demux-w'] .. 'x' .. track['demux-h']
+		elseif track['demux-h'] then
+			hints[#hints + 1] = track['demux-h'] .. 'p'
+		end
+		if track['demux-fps'] then hints[#hints + 1] = string.format('%.5g fps', track['demux-fps']) end
+		if track['audio-channels'] then hints[#hints + 1] = track['audio-channels'] .. ' ch' end
+		if track['demux-samplerate'] then
+			hints[#hints + 1] = string.format('%.3g kHz', track['demux-samplerate'] / 1000)
+		end
+		if #hints > 0 then title = string.format('%s [%s]', title, table.concat(hints, ', ')) end
+		if track.forced then title = title .. ' (强制)' end
+		if track.external then title = title .. ' (外挂)' end
+		if track.default then title = title .. ' (*)' end
+		if prefix then title = string.format('%s: %s', type:sub(1, 1):upper(), title) end
+		return title
+	end
+
+	local function serializer(track_list)
+		local items = {}
+		local active_index = nil
+		local function add_group(type, prop, prefix)
+			local group_start = #items + 1
+			for _, track in ipairs(track_list) do
+				if track.type == type then
+					local id = tonumber(mp.get_property(prop))
+					local active = track.selected and track.id == id
+					items[#items + 1] = {
+						title = build_title(track, prefix),
+						hint = track.lang or '',
+						value = {'set', prop, track.id},
+						active = active,
+					}
+					if active then active_index = #items end
+				end
+			end
+			if #items >= group_start then items[#items].separator = true end
+		end
+		add_group('video', 'vid', true)
+		add_group('audio', 'aid', true)
+		add_group('sub', 'sid', true)
+		if #items > 0 then items[#items].separator = nil end
+		return items, active_index
+	end
+
+	return create_self_updating_menu_opener({
+		title = '轨道',
+		type = 'tracks',
+		list_prop = 'track-list',
+		serializer = serializer,
+		on_activate = function(event)
+			if type(event.value) == 'table' then
+				local prop = event.value[2]
+				local id = event.value[3]
+				if tonumber(mp.get_property(prop)) == id then
+					mp.commandv('set', prop, 'no')
+				else
+					mp.commandv(unpack(event.value))
+				end
+			else
+				mp.command(tostring(event.value))
+			end
+		end,
 	})
 end
 

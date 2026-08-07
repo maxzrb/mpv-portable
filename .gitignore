@@ -90,6 +90,7 @@
 /portable_config/files/persistent_config.json
 /portable_config/files/recent.json
 /portable_config/files/uosc_danmaku_match_cache.json
+/portable_config/script-opts/window_state.conf
 
 # --- 字体 (大型二进制) ---
 # 如需跟踪字体，请取消下面的注释

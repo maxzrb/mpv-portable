@@ -29,9 +29,39 @@ end
 function Speed:on_coordinates()
 	self.height, self.width = self.by - self.ay, self.bx - self.ax
 	self.notch_spacing = self.width / (self.notches + 1)
-	self.font_size = round(self.height * 0.48 * options.font_scale)
+	-- 速度数字字号比左侧媒体信息胶囊大 4px
+	local media_font = Elements:maybe('media_info', 'get_font_size')
+		or round(self.height * 0.48 * options.font_scale)
+	self.font_size = media_font + round(4 * state.scale)
 end
 function Speed:on_options() self:on_coordinates() end
+
+-- 独立于底部控制栏：居中显示在时间轴上方几个像素处。
+-- Controls 布局中仍保留 speed 占位，因此播放键居中不受影响。
+---@return boolean 是否定位成功（时间轴可用）
+function Speed:update_position()
+	local timeline = Elements.timeline
+	if not (timeline and timeline.enabled and timeline.size > 0) then return false end
+
+	-- 与左侧媒体信息胶囊同高，保持底部视觉统一
+	local height = Elements:maybe('media_info', 'get_height')
+		or round(options.controls_size * state.scale)
+	local width = self.width
+	if height <= 0 or width <= 0 then return false end
+	local ax = round((display.width - width) / 2)
+	-- 垂直中心对齐媒体胶囊；胶囊不可用时退回时间轴上方 6px
+	local center_y = Elements:maybe('media_info', 'get_center_y')
+	local ay
+	if center_y then
+		ay = round(center_y - height / 2)
+	else
+		ay = timeline.ay - height - round(6 * state.scale)
+	end
+	if self.ax ~= ax or self.ay ~= ay or self.height ~= height then
+		self:set_coordinates(ax, ay, ax + width, ay + height)
+	end
+	return true
+end
 
 function Speed:speed_step(speed, up)
 	if options.speed_step_is_factor then
@@ -104,6 +134,7 @@ function Speed:handle_wheel_up() mp.set_property_native('speed', self:speed_step
 function Speed:handle_wheel_down() mp.set_property_native('speed', self:speed_step(state.speed, false)) end
 
 function Speed:render()
+	if not self:update_position() then return end
 	local visibility = self:get_visibility()
 	local opacity = self.dragging and 1 or visibility
 
@@ -121,7 +152,11 @@ function Speed:render()
 
 	-- Background
 	ass:rect(self.ax, self.ay, self.bx, self.by, {
-		color = bg, radius = state.radius, opacity = opacity * config.opacity.speed,
+		color = bg,
+		border = 1,
+		border_color = config.color.timeline_track or fg,
+		radius = state.radius,
+		opacity = opacity * config.opacity.speed,
 	})
 
 	-- Coordinates
@@ -140,7 +175,9 @@ function Speed:render()
 	local nearest_notch_x = half_x + (((nearest_notch_speed - speed_at_center) / self.notch_every) * self.notch_spacing)
 	local guide_size = math.floor(self.height / 7.5)
 	local notch_by = by - guide_size
-	local notch_ay_big = ay + round(self.font_size * 1.1)
+	-- 数字已移到视觉范围上方，刻度从顶部开始铺满整个滑块范围
+	local notch_padding = math.max(1, round(2 * state.scale))
+	local notch_ay_big = ay + notch_padding
 	local notch_ay_medium = notch_ay_big + ((notch_by - notch_ay_big) * 0.2)
 	local notch_ay_small = notch_ay_big + ((notch_by - notch_ay_big) * 0.4)
 	local from_to_index = math.floor(self.notches / 2)
@@ -152,15 +189,18 @@ function Speed:render()
 			local notch_x = nearest_notch_x + (i * self.notch_spacing)
 			local notch_thickness = 1
 			local notch_ay = notch_ay_small
+			local notch_color = config.color.time_muted or fg
 			if (notch_speed % (self.notch_every * 10)) < 0.00000001 then
 				notch_ay = notch_ay_big
 				notch_thickness = 1.5
+				notch_color = config.color.match or fg
 			elseif (notch_speed % (self.notch_every * 5)) < 0.00000001 then
 				notch_ay = notch_ay_medium
+				notch_color = config.color.time_current or fg
 			end
 
 			ass:rect(notch_x - notch_thickness, notch_ay, notch_x + notch_thickness, notch_by, {
-				color = fg,
+				color = notch_color,
 				border = 1,
 				border_color = bg,
 				opacity = math.min(1.2 - (math.abs((notch_x - ax - half_width) / half_width)), 1) * opacity,
@@ -170,7 +210,7 @@ function Speed:render()
 
 	-- Center guide
 	ass:new_event()
-	ass:append('{\\rDefault\\an7\\blur0\\bord1\\shad0\\1c&H' .. fg .. '\\3c&H' .. bg .. '}')
+	ass:append('{\\rDefault\\an7\\blur0\\bord1\\shad0\\1c&H' .. (config.color.match or fg) .. '\\3c&H' .. bg .. '}')
 	ass:opacity(opacity)
 	ass:pos(0, 0)
 	ass:draw_start()
@@ -179,11 +219,12 @@ function Speed:render()
 	ass:line_to(half_x - guide_size, by - 2)
 	ass:draw_stop()
 
-	-- Speed value
-	local speed_text = (round(state.speed * 100) / 100) .. 'x'
-	ass:txt(half_x, ay + (notch_ay_big - ay) / 2, 5, speed_text, {
+	-- Speed value：居中显示在滑块视觉范围上方
+	local speed_text = (round(state.speed * 100) / 100) .. ' x'
+	local text_y = ay - round(4 * state.scale) - self.font_size / 2
+	ass:txt(half_x, text_y, 5, speed_text, {
 		size = self.font_size,
-		color = bgt,
+		color = config.color.time_current or bgt,
 		border = options.text_border * state.scale,
 		border_color = bg,
 		opacity = opacity,
