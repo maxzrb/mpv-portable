@@ -12,12 +12,13 @@ $SevenZip = Join-Path $Root '7z.exe'
 $LayerDist = Join-Path $Root 'research/lsfg-vk-win/dist/windows'
 $LayerDll = Join-Path $LayerDist 'bin/lsfg-vk-layer.dll'
 $LayerManifest = Join-Path $LayerDist 'share/vulkan/implicit_layer.d/VkLayer_LSFGVK_frame_generation.json'
+$LosslessDll = Join-Path $Root 'Lossless Scaling/Lossless.dll'
 $PackageName = "04-mpv-lsfg-addon-v${Version}"
 $Stage = Join-Path $Root "build/$PackageName"
 $OutputRoot = Join-Path $Root $OutputDir
 $Archive = Join-Path $OutputRoot "$PackageName.7z"
 
-foreach ($required in @($SevenZip, $LayerDll, $LayerManifest)) {
+foreach ($required in @($SevenZip, $LayerDll, $LayerManifest, $LosslessDll)) {
     if (-not (Test-Path -LiteralPath $required)) {
         throw "缺少 LSFG 公开包所需文件：$required"
     }
@@ -29,7 +30,7 @@ if (Test-Path -LiteralPath $Stage) {
 $null = New-Item -ItemType Directory -Force -Path $Stage
 $null = New-Item -ItemType Directory -Force -Path $OutputRoot
 
-# 公开包只交付 GPL Vulkan Layer；不复制 Steam 的 Lossless Scaling 目录。
+# 公开包交付 GPL Vulkan Layer，并内置 Lossless.dll（用户确认的既定发布内容）。
 $LayerTarget = Join-Path $Stage 'lsfg-vk'
 $null = New-Item -ItemType Directory -Force -Path $LayerTarget
 Copy-Item -LiteralPath $LayerDll -Destination $LayerTarget
@@ -42,24 +43,15 @@ $null = New-Item -ItemType Directory -Force -Path $ControlScriptDest
 Copy-Item -LiteralPath (Join-Path $Root 'portable_config/scripts/lsfg_control.lua') `
     -Destination $ControlScriptDest
 
-# 保留目标目录和明确的用户自备说明，但不放入任何 Steam DLL。
+# 内置 Lossless.dll，解压即可使用；不复制 Steam 应用的其他文件。
 $LosslessTarget = Join-Path $Stage 'Lossless Scaling'
 $null = New-Item -ItemType Directory -Force -Path $LosslessTarget
-$LosslessPlaceholder = Join-Path $LosslessTarget '请从Steam复制Lossless.dll到此目录.txt'
+Copy-Item -LiteralPath $LosslessDll -Destination (Join-Path $LosslessTarget 'Lossless.dll')
+$LosslessNote = Join-Path $LosslessTarget '内置说明.txt'
 @'
-本公开包不包含 Lossless Scaling 的任何文件。
-
-请先在 Steam 购买并安装 Lossless Scaling，然后通过：
-  Steam → 库 → Lossless Scaling → 管理 → 浏览本地文件
-
-只复制安装目录根部的：
-  Lossless.dll
-
-到本目录，最终路径应为：
-  <mpv根目录>\Lossless Scaling\Lossless.dll
-
-不需要复制 LosslessScaling.dll、语言资源 DLL、.NET/WPF DLL 或 EXE。
-'@ | Set-Content -LiteralPath $LosslessPlaceholder -Encoding UTF8
+本目录已由 04 LSFG 扩展包内置 Lossless.dll，解压后即可使用 LSFG 补帧。
+Lossless Scaling 为商业软件，尚未购买正版授权的用户请自行决定是否支持正版。
+'@ | Set-Content -LiteralPath $LosslessNote -Encoding UTF8
 
 # LSFG 菜单和状态脚本归 01/02 配置包管理。04 只增加运行层、启动器、
 # 对应源码和说明，避免以后单独更新 Config 时发生跨包覆盖。
@@ -83,8 +75,9 @@ $Readme = Join-Path $Stage 'README-LSFG公开扩展包.txt'
 @"
 MPV LSFG 公开扩展包 v${Version}
 
-本包可公开分发，不包含 Lossless Scaling、Steam 应用文件或专有模型资源。
-运行 LSFG 时仍需要用户拥有正版 Steam 版 Lossless Scaling，并自行提供 Lossless.dll。
+本包可公开分发，已内置 Lossless.dll，解压后即可开箱使用 LSFG 补帧。
+Lossless Scaling 为商业软件，尚未购买正版授权的用户请自行决定是否支持正版。
+本包不包含 Steam 应用的其他文件（EXE、语言资源、.NET/WPF 运行库、模型资源）。
 
 安装与覆盖顺序：
   01. 01-mpv-base-v${Version}.7z
@@ -101,16 +94,9 @@ MPV LSFG 公开扩展包 v${Version}
   LSFG 菜单、控制和状态脚本已经包含在同版本 Base/Config 中。
   本包不覆盖 Config 或 Extras 文件，以后单独更新 Config 不需要重新解压本包。
 
-准备用户自备文件：
-  1. 在 Steam 中打开 Lossless Scaling 的本地文件目录。
-  2. 只复制根目录的 Lossless.dll。
-  3. 放到 <mpv根目录>\Lossless Scaling\Lossless.dll。
-
-不需要复制：
-  - LosslessScaling.dll
-  - 各语言目录中的 LosslessScaling.resources.dll
-  - .NET、WPF、WinRT 等运行库 DLL
-  - LosslessScaling.exe 或其他 EXE
+内置文件：
+  Lossless Scaling\Lossless.dll
+  Lossless Scaling\内置说明.txt
 
 使用方法：
   解压到现有 mpv 根目录后，用 PowerShell 运行：
@@ -126,11 +112,14 @@ MPV LSFG 公开扩展包 v${Version}
 上游来源和导入提交见 research/lsfg-vk-win/UPSTREAM.md。
 "@ | Set-Content -LiteralPath $Readme -Encoding UTF8
 
-# 严格门禁：公开归档只允许一个由本项目构建的 GPL Layer DLL，且不得含 EXE。
+# 严格门禁：公开归档只允许 LSFG GPL Layer DLL 和已确认内置的 Lossless.dll，且不得含 EXE。
 $StagedDlls = @(Get-ChildItem -LiteralPath $Stage -Recurse -File -Filter '*.dll')
-$AllowedDll = (Resolve-Path -LiteralPath (Join-Path $LayerTarget 'lsfg-vk-layer.dll')).Path
+$AllowedDlls = @(
+    (Resolve-Path -LiteralPath (Join-Path $LayerTarget 'lsfg-vk-layer.dll')).Path
+    (Resolve-Path -LiteralPath (Join-Path $LosslessTarget 'Lossless.dll')).Path
+)
 $UnexpectedDlls = @($StagedDlls | Where-Object {
-    $_.FullName -ne $AllowedDll
+    $_.FullName -notin $AllowedDlls
 })
 if ($UnexpectedDlls.Count -gt 0) {
     throw "公开包检测到不允许的 DLL：$($UnexpectedDlls.FullName -join ', ')"
@@ -142,12 +131,15 @@ if ($StagedExecutables.Count -gt 0) {
 }
 
 $LosslessFiles = @(Get-ChildItem -LiteralPath $LosslessTarget -Recurse -File)
-$AllowedPlaceholder = (Resolve-Path -LiteralPath $LosslessPlaceholder).Path
+$AllowedLosslessFiles = @(
+    (Resolve-Path -LiteralPath (Join-Path $LosslessTarget 'Lossless.dll')).Path
+    (Resolve-Path -LiteralPath $LosslessNote).Path
+)
 $UnexpectedLosslessFiles = @($LosslessFiles | Where-Object {
-    $_.FullName -ne $AllowedPlaceholder
+    $_.FullName -notin $AllowedLosslessFiles
 })
-if ($LosslessFiles.Count -ne 1 -or $UnexpectedLosslessFiles.Count -gt 0) {
-    throw "公开包的 Lossless Scaling 目录包含非占位文件，拒绝打包"
+if ($LosslessFiles.Count -lt 1 -or $UnexpectedLosslessFiles.Count -gt 0) {
+    throw "公开包的 Lossless Scaling 目录缺少内置文件或包含不允许的文件，拒绝打包"
 }
 
 if (Test-Path -LiteralPath $Archive) {

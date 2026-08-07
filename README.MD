@@ -20,11 +20,11 @@
 
 | 顺序 | 包 | 解压即用？ | 内容 |
 |------|----|------------|------|
-| **01** | **Base** | ✅ 基本播放 | mpv 核心 + 运行时 + 基础配置 |
+| **01** | **Base** | ✅ 基本播放 | mpv 核心 + 运行时 + 基础配置 + 启动 Logo 素材（启动页/起播格式 Logo） |
 | **02** | **Extras** | ✗ 需要 Base | 着色器、VapourSynth 补帧/超分、Python、工具 |
 | **03** | **Faster-Whisper** | ✗ 需要 Base | AI 语音识别字幕运行时；语音模型首次选择时自动下载 |
-| **04** | **LSFG** | ✗ 需要 Base 及 Steam 文件 | GPL Vulkan Layer、启动器、控制脚本、源码；不含 Steam DLL |
-| **05** | **Config** | ✗ 需要 Base | 个人设置的最终覆盖层，最后安装 |
+| **04** | **LSFG** | ✗ 需要 Base | GPL Vulkan Layer、启动器、控制脚本、源码；内置 Lossless.dll |
+| **05** | **Config** | ✗ 需要 Base | 个人设置的最终覆盖层，最后安装；不含大型 Logo 素材（归 01） |
 
 ## 安装与覆盖顺序
 
@@ -39,10 +39,9 @@
 包之间允许存在交集以保证各自可用性。04 包含 LSFG 控制脚本以保联动，
 05 作为最终覆盖层可覆盖前面所有包的同名文件。单独更新配置只需解压 05。
 
-`04` 可以公开分发，但出于版权边界不包含 Lossless Scaling 的 DLL 或模型资源。
-使用者需要购买并安装 Steam 版 Lossless Scaling，然后只把其安装目录根部的
-`Lossless.dll` 复制到 `<mpv根目录>\Lossless Scaling\Lossless.dll`。
-不需要复制 `LosslessScaling.dll`、语言资源 DLL、.NET/WPF DLL 或任何 EXE。
+`04` 可以公开分发，已内置 LSFG 补帧所需的 `Lossless.dll`，解压后即可开箱使用。
+Lossless Scaling 为商业软件，尚未购买正版授权的用户请自行决定是否支持正版。
+包内不包含 `LosslessScaling.dll`、语言资源 DLL、.NET/WPF DLL 或任何 EXE。
 
 个人本地也可以生成 `mpv-full-private-vX.Y.Z.7z`。它会按 01～05 的顺序合并全部
 公开包，并加入完整 `Lossless Scaling` 目录备份，形成解压即用的一体包。
@@ -113,11 +112,13 @@ mpv-portable/
 .\build-all-packages.ps1 -Version '1.2.0' -IncludePrivate
 ```
 
-需要项目根目录已经存在个人从 Steam 安装中复制的：
+构建 04 或全量包前，需要项目根目录已经存在本地提供的：
 
 ```text
 Lossless Scaling\Lossless.dll
 ```
+
+04 公开包会把该 DLL 内置到 `Lossless Scaling\` 目录，解压后即可使用 LSFG 补帧。
 
 ### 分别构建
 
@@ -130,7 +131,7 @@ Lossless Scaling\Lossless.dll
 - `build-release.ps1`：构建 01 Base + 02 Extras。
 - `build-fasterwhisper-public.ps1`：构建 03，AI 语音识别运行时。
 - `build-lsfg-public.ps1`：构建 04，含控制脚本以保证联动可用性。
-- `build-config-public.ps1`：构建 05，个人设置最终覆盖层。
+- `build-config-public.ps1`：构建 05，个人设置最终覆盖层（不含启动 Logo 素材，归 01）。
 - `build-full-private.ps1`：完整合并 01～05，并加入完整 Lossless Scaling 目录备份。
 - 所有脚本可用 `-OutputDir '目录名'` 修改输出目录。
 

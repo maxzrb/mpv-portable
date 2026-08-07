@@ -112,7 +112,7 @@ function Invoke-CopyConfig {
     param([string]$Dest)
     $configDest = Join-Path $Dest "portable_config"
     $configSrc = Join-Path $RootDir "portable_config"
-    Write-Host "       Copying portable_config/ (excluding shaders vs cache files)..." -ForegroundColor Gray
+    Write-Host "       Copying portable_config/ (excluding shaders vs cache files; keeping script-assets)..." -ForegroundColor Gray
     $null = New-Item -ItemType Directory -Force $configDest
     Copy-Item -Recurse -Force "$configSrc\*" $configDest
     # Remove heavy content (goes into extras)
@@ -120,6 +120,9 @@ function Invoke-CopyConfig {
         $exPath = Join-Path $configDest $exclude
         if (Test-Path $exPath) { Remove-Item -Recurse -Force $exPath }
     }
+    # 个人运行时状态（窗口记忆）不进公开包
+    $stateFile = Join-Path $configDest "script-opts/window_state.conf"
+    if (Test-Path $stateFile) { Remove-Item -Force $stateFile }
 }
 
 function Copy-IfExists {

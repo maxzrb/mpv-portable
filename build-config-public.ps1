@@ -24,16 +24,22 @@ if (Test-Path -LiteralPath $Stage) {
 $null = New-Item -ItemType Directory -Force -Path $Stage
 $null = New-Item -ItemType Directory -Force -Path $OutputRoot
 
-# 复制 portable_config（排除大型素材，这些归 Extras）
+# 复制 portable_config（排除大型素材：shaders/vs 归 Extras，script-assets 启动 Logo 归 Base）
 $configDest = Join-Path $Stage 'portable_config'
 $configSrc = Join-Path $Root 'portable_config'
-Write-Host "复制 portable_config/（排除 shaders vs cache files）..." -ForegroundColor Gray
+Write-Host "复制 portable_config/（排除 shaders vs script-assets cache files）..." -ForegroundColor Gray
 $null = New-Item -ItemType Directory -Force $configDest
 Copy-Item -Recurse -Force "$configSrc\*" $configDest
 foreach ($exclude in @('shaders', 'vs', 'cache', 'files')) {
     $exPath = Join-Path $configDest $exclude
     if (Test-Path $exPath) { Remove-Item -Recurse -Force $exPath }
 }
+# 启动 Logo 素材（启动页/起播格式 Logo）归 01 Base，Config 不重复携带
+$assetsPath = Join-Path $configDest 'script-assets'
+if (Test-Path $assetsPath) { Remove-Item -Recurse -Force $assetsPath }
+# 个人运行时状态（窗口记忆）不进公开包
+$stateFile = Join-Path $configDest 'script-opts/window_state.conf'
+if (Test-Path $stateFile) { Remove-Item -Force $stateFile }
 
 # 项目文件
 foreach ($file in @('README.MD', '.gitignore')) {
