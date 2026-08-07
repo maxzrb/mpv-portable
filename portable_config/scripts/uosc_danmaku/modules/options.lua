@@ -3,7 +3,8 @@ local opt = require("mp.options")
 -- 选项
 options = {
     -- 单个服务器地址（保留，用于向后兼容或单服务器情况）
-    api_server = "https://api.dandanplay.net",
+    -- 默认使用项目维护的代理，避免弹弹play开放平台鉴权策略导致匿名请求失败
+    api_server = "https://danmaku-api.152468.xyz",
     -- 多个服务器地址，用于并发请求
     api_servers = "",
     -- 指定 b 站和爱腾优的弹幕获取的兜底服务器地址，主要用于获取非动画弹幕

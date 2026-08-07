@@ -898,7 +898,7 @@ api_server
 想要使用此选项，请在 mpv 配置文件夹下的 `script-opts`中创建 `uosc_danmaku.conf`文件并自定义如下内容：
 
 ```
-api_server=https://api.dandanplay.net
+api_server=https://danmaku-api.152468.xyz
 ```
 
 </details>
@@ -928,7 +928,7 @@ api_servers
 想要使用此选项，请在 mpv 配置文件夹下的 `script-opts`中创建 `uosc_danmaku.conf`文件并自定义如下内容，多个用英文逗号分割，优选弹幕 api 放前面：
 
 ```
-api_servers=https://api.dandanplay.net,https://xx.626333.xyz/87654321
+api_servers=https://example-primary.invalid,https://danmaku-api.152468.xyz
 ```
 
 </details>

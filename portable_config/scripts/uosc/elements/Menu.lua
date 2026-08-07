@@ -108,6 +108,7 @@ function Menu:init(data, callback, opts)
 	self.opts = opts or {}
 	self.offset_x = 0 -- Used for submenu transition animation.
 	self.mouse_nav = self.opts.mouse_nav -- Stops pre-selecting items
+	self.mouse_hovered_index = nil -- 当前鼠标悬停项，包括不可选择项
 	self.item_height = nil
 	self.min_width = nil
 	self.item_spacing = 1
@@ -700,7 +701,8 @@ end
 
 ---@param shortcut? Shortcut
 function Menu:handle_cursor_up(shortcut)
-	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging then
+	if self.proximity_raw <= -self.padding and self.drag_last_y and not self.is_dragging
+	and self.mouse_hovered_index == self.current.selected_index then
 		self:activate_selected_item(shortcut, true)
 	end
 	if self.is_dragging then
@@ -1401,7 +1403,6 @@ function Menu:render()
 			bx = content_rect.bx + self.padding,
 			by = content_rect.by + self.padding,
 		}
-		local blur_selected_index = self.mouse_nav and is_current
 		local blur_action_index = self.mouse_nav and menu.action_index ~= nil
 
 		-- Background
@@ -1455,6 +1456,20 @@ function Menu:render()
 				bx = bg_rect.bx + (item.items and self.gap or -self.padding), -- to bridge the submenu gap with cursor
 				by = math.min(item_ay + self.scroll_step, bg_rect.by),
 			}
+
+			-- 先记录悬停项，再仅对可选择项更新选中状态，避免误激活上一项
+			if is_current and self.mouse_nav
+				and (submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) <= 0) then
+				self.mouse_hovered_index = index
+				if item.selectable ~= false
+					and (not submenu_rect or not cursor:direction_to_rectangle_distance(submenu_rect)) then
+					menu.selected_index = index
+					if not is_selected then
+						is_selected = true
+						request_render()
+					end
+				end
+			end
 
 			local has_background = is_selected or item.active
 			local next_item = menu.items[index + 1]
@@ -1544,7 +1559,7 @@ function Menu:render()
 
 						-- Select action on cursor hover
 						if self.mouse_nav and get_point_to_rectangle_proximity(cursor, rect) <= 0 then
-							cursor:zone('primary_down', rect, self:create_action(function(shortcut)
+							cursor:zone('primary_click', rect, self:create_action(function(shortcut)
 								self:activate_selected_item(shortcut, true)
 							end))
 							blur_action_index = false
@@ -1578,7 +1593,9 @@ function Menu:render()
 						and bg_rect.ax + (bg_rect.bx - bg_rect.ax) / 2
 						or content_bx - (icon_size / 2)
 					if item.icon == 'spinner' then
-						ass:spinner(x, item_center_y, icon_size * 1.5, {color = font_color, opacity = menu_opacity * 0.8})
+						ass:spinner(x, item_center_y, icon_size * 1.5, {
+							color = font_color, opacity = menu_opacity * 0.8, clip = item_clip,
+						})
 					else
 						ass:icon(x, item_center_y, icon_size * 1.5, item.icon, {
 							color = font_color, opacity = menu_opacity, clip = item_clip,
@@ -1640,22 +1657,6 @@ function Menu:render()
 				})
 			end
 
-			-- Select hovered item
-			if is_current and self.mouse_nav and item.selectable ~= false then
-				if submenu_rect and cursor:direction_to_rectangle_distance(submenu_rect)
-					or actions_rect and actions_rect.is_outside and cursor:direction_to_rectangle_distance(actions_rect) then
-					blur_selected_index = false
-				else
-					if submenu_is_hovered or get_point_to_rectangle_proximity(cursor, item_rect_hitbox) <= 0 then
-						blur_selected_index = false
-						menu.selected_index = index
-						if not is_selected then
-							is_selected = true
-							request_render()
-						end
-					end
-				end
-			end
 		end
 
 		-- Footnote / Selected action label
@@ -1676,7 +1677,7 @@ function Menu:render()
 				color = fg, border = state.scale, border_color = bg, opacity = opacity,
 			})
 			if text then
-				ass:txt(icon_x + self.font_size * 0.75, icon_y, 4, text, {
+				ass:txt(icon_x + self.font_size * 0.75, icon_y - self.font_size * 0.5, 7, ass_escape(text), {
 					size = self.font_size,
 					color = fg,
 					border = state.scale,
@@ -1816,6 +1817,7 @@ function Menu:render()
 				ass:txt(rect.cx, rect.cy, 5, menu.ass_safe_title, {
 					size = self.font_size,
 					bold = true,
+					-- 本地标题仍使用浅色背景，文字保持深色
 					color = bg,
 					wrap = 2,
 					opacity = menu_opacity,
@@ -1824,10 +1826,6 @@ function Menu:render()
 			end
 		end
 
-		-- We are in mouse nav and cursor isn't hovering any item
-		if blur_selected_index then
-			menu.selected_index = nil
-		end
 		if blur_action_index then
 			menu.action_index = nil
 			request_render()

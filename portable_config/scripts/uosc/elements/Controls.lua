@@ -380,15 +380,61 @@ function Controls:update_dimensions()
 	local width_for_dynamics = available_width - statics_width
 	local empty_space_width = width_for_dynamics - max_dynamics_width
 	local width_for_gaps = math.min(empty_space_width, size * gaps)
-	local individual_space_width = spaces > 0 and ((empty_space_width - width_for_gaps) / spaces) or 0
 
+	-- 恰好两个 space 时让中间控件块相对整个可用区域绝对居中
+	local space_widths = {}
+	if spaces == 2 then
+		local section = 1
+		local section_widths = {0, 0, 0}
+		for c, control in ipairs(self.layout) do
+			if not control.hide then
+				if control.sizing == 'space' then
+					section = section + 1
+				else
+					local w = 0
+					if control.sizing == 'gap' then
+						if width_for_gaps > 0 then w = width_for_gaps * (control.ratio / gaps) end
+					elseif control.sizing == 'static' then
+						w = size * control.scale * control.ratio + (c ~= #self.layout and spacing or 0)
+					elseif control.sizing == 'dynamic' then
+						local height = size * control.scale
+						w = (max_dynamics_width < width_for_dynamics
+							and height * control.ratio
+							or width_for_dynamics * ((control.scale * control.ratio) / dynamic_units))
+							+ (c ~= #self.layout and spacing or 0)
+					end
+					section_widths[section] = section_widths[section] + w
+				end
+			end
+		end
+		local left_w, middle_w = section_widths[1], section_widths[2]
+		local total_space = empty_space_width - width_for_gaps
+		local space1 = (available_width - middle_w) / 2 - left_w + spacing / 2
+		local space2 = total_space - space1
+		if space1 < 0 then
+			space2 = space2 + space1
+			space1 = 0
+		elseif space2 < 0 then
+			space1 = space1 + space2
+			space2 = 0
+		end
+		if space1 < 0 then space1 = 0 end
+		if space2 < 0 then space2 = 0 end
+		space_widths = {space1, space2}
+	else
+		local individual_space_width = spaces > 0 and ((empty_space_width - width_for_gaps) / spaces) or 0
+		for i = 1, spaces do space_widths[i] = individual_space_width end
+	end
+
+	local space_index = 0
 	for c, control in ipairs(self.layout) do
 		if not control.hide then
 			local sizing, element, scale, ratio = control.sizing, control.element, control.scale, control.ratio
 			local width, height = 0, 0
 
 			if sizing == 'space' then
-				if individual_space_width > 0 then width = individual_space_width end
+				space_index = space_index + 1
+				width = space_widths[space_index] or 0
 			elseif sizing == 'gap' then
 				if width_for_gaps > 0 then width = width_for_gaps * (ratio / gaps) end
 			elseif sizing == 'static' then

@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（已与 `origin/master` 同步） |
 | **最新发布提交** | `9f86218`（tag: `v1.3.2`） |
-| **工作区** | v1.3.2 已发布；工作树干净（忽略的构建产物除外） |
+| **工作区** | v1.3.2 已发布；小型依赖维护已完成并验证，17 个文件尚未提交 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.3.2（已发布） |
-| **上次操作** | 发布 v1.3.2：五个公开包上传 GitHub Release，个人全量包仅本地保留 |
+| **上次操作** | 完成 Yaozhi 8.7+ UI、HDR 图形字幕与空间 PCM 的官方核心可行性研究 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -45,6 +45,8 @@ c:\Program portable\mpv2\
 - [x] 更新 7-Zip 25.01 → 26.02、TorrServer MatriX.141 → 142.2、umpv-go 1.4.0 → 1.5.1
 - [x] 安全合并更新器报告的 15 个脚本、文档和着色器差异，保留本地个性化文件
 - [x] 修复 manager 的 PlayKit 分支、quality-menu 白名单、同名脚本覆盖和 Git blob 误报
+- [x] 手工完成小型依赖维护：uosc 5.13 关键修复、blacklist/config 一致性和弹幕 API 兜底
+- [ ] 基于现有 uosc 5.13 分阶段移植 Yaozhi 风格底栏、媒体参数胶囊和起播格式标签（不整包覆盖）
 - [x] 安装 Faster-Whisper-XXL 公开版 r245.4，从 Extras 拆分为独立 04 增量包
 - [x] 恢复“着色器 / 视频滤镜”一级分类，在完整技术分类前补充少量互斥推荐入口
 - [x] 为 Anime4K v4 增加 HQ/Fast 两档 A、B、C、A+A、B+B、C+A 共 12 套官方标准预设
@@ -763,3 +765,56 @@ c:\Program portable\mpv2\
 - **远端资产**: 01 Base、02 Extras 分卷、03 FW、04 LSFG、05 Config 五个公开包；未上传个人全量包。
 - **清理**: `build/` 暂存目录已删除；`release/` 保留 v1.3.2 六包与 SHA-256 记录。
 - **Git 状态**: 工作树干净（忽略产物除外），无需额外提交。
+
+### 2026-08-07 11:37 会话: 小型依赖手工维护
+
+- **启动与协作**:
+  - 按 HandShake 流程读取 `AGENTS.md`、`CLAUDE.md` 和本状态记录；`git pull --ff-only` 显示已与 `origin/master` 同步，起始工作树干净。
+  - 使用两个 DeepSeek v4 flash 子代理分别复核 uosc 5.13 和 uosc_danmaku 主线差异；子代理只读审计，最终由主代理逐项判断和手工合并。
+- **配置与 blacklist 修复**:
+  - `blacklist-extensions.lua` 修正 `remove_files_without_extension` 键名、扩展名匹配、目录/不存在路径保护及英文拼写错误，使现有配置真正生效。
+  - `select.conf` 设置 `populate_menu_data=no`，避免内置 select.lua 与 `dyn_menu.lua` 重复维护 `menu-data`。
+  - `hdr_mode.conf` 与当前脚本同步为 `target_peak=0` 自动检测，并补充 mpv 0.41 HDR 直通说明；当前 `hdr_mode=noth` 行为不变。
+- **uosc 5.13 手工合并**:
+  - 版本标记更新为 5.13.0；保留本地字体、ziggy、播放列表标题、置顶按钮、TopBar 窗口控制和菜单拼音搜索定制。
+  - 合并完整点击触发、防原生 context menu/console 点击穿透、不可选择菜单项误激活、spinner 裁剪和 footnote 转义修复。
+  - 合并双 `space` 控件绝对居中、时间轴右键命令及 `{time}` 占位、`pause_indicator` 默认透明度。
+  - 没有恢复 Updater，也没有覆盖本地 TopBar/Menu/Controls 整文件。
+- **uosc_danmaku 最小维护**:
+  - 复核确认本地已包含恰好 16 MiB 文件的 `>=` 哈希边界修复；单源延迟走独立菜单逻辑，不受 Tony15246 主线对应 bug 影响。
+  - 保留两个现有自定义 API，将 `https://danmaku-api.152468.xyz` 追加为末位回退，并同步单服务器默认值与 README。
+  - 官方代理 `/api/v2/search/anime` 实测返回 HTTP 200 JSON。
+  - 未引入 custom save path、`sites/`/`inflate.lua` 和 360kan 重构；这些变更会与本地多服务器、历史源及函数签名产生高冲突，不属于本次小维护。
+- **验证**:
+  - 10 个改动 Lua 文件全部通过 `luajit loadfile` 语法检查。
+  - 使用真实 `portable_config` 自动加载并播放两帧 lavfi 视频，mpv 退出码 0；uosc、uosc_danmaku、blacklist_extensions、dyn_menu 无目标错误。
+  - 15 个功能文件统一为 UTF-8 无 BOM、LF；`git diff --check` 通过。
+  - 临时上游克隆、子代理 `.tmp_audit` 和测试 mpv 进程均已清理。
+  - uosc 点击穿透、置顶按钮和菜单 hover 的真人交互体验仍建议使用实际视频做一次手工确认。
+- **Git 状态**: `master` 提交仍与 `origin/master` 同步；本轮 15 个功能文件和 2 个 HandShake 记录文件尚未提交或推送，建议作为一个逻辑维护提交。
+
+### 2026-08-07 12:02 会话: Yaozhi 界面与定制核心可行性研究
+
+- **研究范围**:
+  - 只读审计 `Yaozhil/mpv-Yaozhi` 最新 8.7+ Release、`main`、`codex/hdr-pgs-core-fix` 维护分支及 7 个公开补丁。
+  - 对照本地 mpv `v0.41.0-860-gc8c7d91a8`、现有 uosc 5.13、本地音频输出驱动和 2026-08-05 的 mpv 官方源码。
+  - 本轮未改播放器配置或功能代码；下载的 8.7+ 发行包与上游源码只用于临时审计。
+- **UI 与媒体参数结论**:
+  - Yaozhi 发行包仍以 uosc 5.12 为基线，其时间轴从上游约 500 行扩展到 1549 行；媒体标签主要由 `Timeline.lua` 和 `script-modules/media-format-info.lua` 实现。
+  - 帧率、动态码率、静态平均码率、网络读取速度、硬解状态、画面/音频格式等均可由官方属性 `estimated-vf-fps`、`video-bitrate`、`track-list/*/demux-bitrate`、`cache-speed`、`video-params`、`audio-params`、`hwdec-current` 获取，不依赖定制核心。
+  - 本地已具备 uosc 5.13、中文 stats 和相关属性读取逻辑；应把媒体信息做成独立元素并选择性迁移配色、控件排列、速度按钮和起播标签，不能覆盖整份 Yaozhi uosc，以免回退 5.13 修复并冲掉置顶按钮、拼音搜索等本地定制。
+  - Yaozhi 独立 `MediaInfo.lua` 在构造器中被注释，实际截图效果来自深度修改的 `Timeline.lua`；移植时不应误复制这份未启用的旧元素。
+- **HDR 图形字幕结论**:
+  - 本地官方核心已暴露 `image-subs-hdr-peak=<sdr|video|video-static|video-dynamic|10-10000>`，因此 150/203/250/300/400 nits 菜单可在不换核心的前提下实现。
+  - 本地没有 Yaozhi 新增的 `image-subs-colorspace=<video|sdr|auto>`；官方 `gpu-next` 仍让 PGS/VobSub/DVB 的 BGRA overlay 继承视频色彩空间。完整的“UHD 内封 PGS 随视频、外置/SDR 图形字幕按 sRGB”自动策略无法仅靠 Lua/配置复刻。
+  - 官方核心兼容版应明确命名为“图形字幕 HDR 亮度/峰值”，不要宣传为完整色彩空间修复。若以后接受自编译核心，可手工重基 Yaozhi 0001 补丁；该补丁对 2026-08-05 官方源码已不能直接 `git apply`。
+- **空间 PCM 与沉浸声结论**:
+  - 当前官方 Windows WASAPI 在构造格式时仍将所有 `nChannels > 8` 的布局压成 7.1；本地 OpenAL 也只列到 7.1，且本地构建没有 SDL AO。因此 5.1.4/7.1.4 的真正 10/12 声道具名 PCM 输出不能由 Lua、`audio-channels` 或菜单实现。
+  - Yaozhi 为该能力维护 mpv WASAPI、mpv SDL、SDL2 WASAPI 和 swresample 多层补丁；其中 mpv 的 0002/0005/0007 对当前官方源码仍可通过 `git apply --check`，但采用后即成为需长期维护的自定义核心。
+  - Windows 32 位 `WAVEFORMATEXTENSIBLE` mask 无法精确表达含 `TSL/TSR` 的 9.1.4/9.1.6；Yaozhi 自身也只保证这两种布局在解码、滤镜和 `ao=pcm` 阶段保序，不保证普通 WASAPI/HDMI 精确路由。
+  - AV3A / Audio Vivid 解码另需定制 FFmpeg 解码器，不属于空间 PCM 输出补丁，也不能在官方二进制上以脚本补齐。官方核心可继续提供 TrueHD/E-AC-3/DTS-HD 源码直通，但直通不等于多声道 PCM。
+- **推荐实施顺序**:
+  1. 先做官方核心零补丁 UI 试验：Yaozhi 配色、紧凑底栏、响应式媒体参数胶囊、官方 `cache-speed` 网络速率和起播格式标签。
+  2. 再加入官方核心兼容的图形字幕 HDR 峰值菜单，并用真实 HDR + 内封/外置 PGS 样片验证。
+  3. 空间 PCM 只在 UI 中显示输入布局和能力边界；除非用户明确接受单独的实验核心包，否则不进入 Base/Config 主线。
+- **Git 状态**: `git pull --ff-only` 显示与 `origin/master` 同步；此前 15 个功能文件和 2 个记录文件仍未提交。本轮没有新增功能文件，记录更新继续落在原有 17 个修改文件中。
