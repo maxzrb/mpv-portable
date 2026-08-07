@@ -107,7 +107,7 @@ local function persist_options()
             .. 'custom_width=%d\n'
             .. 'custom_height=%d\n'
             .. 'custom_stride=%d\n'
-            .. '# 启动页图案在窗口中的最大逻辑尺寸；实际尺寸仍会随窗口自适应。\n'
+            .. '# 启动页图案逻辑尺寸；实际尺寸以窗口短边 50% 为防溢出上限。\n'
             .. 'display_size=%d\n',
         o.custom_enabled and 'yes' or 'no',
         tonumber(o.custom_width) or 0,
@@ -135,15 +135,15 @@ local function branding_enabled()
     return mp.get_property('user-data/uosc/idle-branding', 'yes') ~= 'no'
 end
 
-local function foreground_overlay_open()
+-- 只有全屏文件浏览器需要隐藏启动页；uosc 菜单打开时保留图片
+local function file_browser_open()
     return mp.get_property_bool('user-data/file_browser/open', false)
-        or mp.get_property_native('user-data/uosc/menu/type') ~= nil
 end
 
 local function render_overlay()
     if not mp.get_property_bool('idle-active', false)
         or not branding_enabled()
-        or foreground_overlay_open() then
+        or file_browser_open() then
         remove_overlay()
         publish_mode()
         return
@@ -169,7 +169,8 @@ local function render_overlay()
     local hidpi_scale = clamp(1, mp.get_property_number('display-hidpi-scale', 1), 1.5)
     local configured_size = math.max(72, tonumber(o.display_size) or 220) * hidpi_scale
     local smaller_side = math.min(display_width, display_height)
-    local target_size = clamp(72, smaller_side * 0.21, configured_size)
+    -- display_size 优先；仅以窗口短边的 50% 作为防溢出上限
+    local target_size = clamp(72, configured_size, smaller_side * 0.5)
     local scale = target_size / math.max(source_width, source_height)
     local width = math.max(1, round(source_width * scale))
     local height = math.max(1, round(source_height * scale))

@@ -10,7 +10,7 @@
 | **工作区** | v1.4.0 已正式发布并收尾；过期构建产物（v1.3.2 全套包、tmp 调试文件）已清理 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.0（已发布） |
-| **上次操作** | 清理过期构建产物：删除 v1.3.2 全套 7 包与 tmp 调试文件，release/ 仅保留 v1.4.0 |
+| **上次操作** | 移植 uosc 音量条样式：竖向圆角轨道 + 青色填充 + 圆形把手 + 底部大号数字 + 半透明悬浮面板 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1410,3 +1410,50 @@ c:\Program portable\mpv2\
   - `tmp/` 删除 6 个调试/审计临时文件：list_scripts.log、menu_dump.json、menu_dump.log、menu_dump.lua、menu_dump2.log、menu_dump3.log。
 - **保留**: `release/` 仅保留 v1.4.0 七个包（01~05 + 分卷 + 个人全量包）；`build/` 已空；旧版本校验和仍在 `version/版本迭代记录.md` 历史节。
 - **Git 状态**: 先前补充的发布流程提交 `229892d` 已推送，`master` 与 `origin/master` 同步。
+
+### 2026-08-07 21:40 会话: 修复启动页图片大小不生效
+
+- **用户反馈**: 修改 `idle_branding.conf` 的 `display_size` 没有反应。
+- **根因**（实测确认）:
+  - 脚本原先 `target_size = clamp(72, 窗口短边 * 0.21, display_size * DPI)`，窗口短边 × 0.21 形成硬上限。
+  - 当前窗口 1728×972 时上限约 204；display_size 已设 320，实际始终显示 204，220→320 看不出区别。
+  - `options.read_options` 只在 mpv 启动时读取，运行中改 conf 需重启。
+- **修改**:
+  - `idle-branding-image.lua`：改为 `clamp(72, display_size * DPI, 窗口短边 * 0.5)`，display_size 优先，仅以窗口短边 50% 防溢出。
+  - 同步更新脚本内持久化注释与 `idle_branding.conf` 注释。
+- **验证**: 完整配置 idle 启动，`user-data/idle-branding-image/display-height=320`（此前为约 204），active=yes。
+- **Git 状态**: 修复未提交（v1.4.0 已发布，此修复随下版发布）；`master` 与 `origin/master` 同步。
+
+### 2026-08-07 21:46 会话: 修复打开 uosc 菜单时启动页消失
+
+- **用户反馈**: 一右键打开 uosc 菜单，启动页图片就消失。
+- **根因**: `idle-branding-image.lua` 的隐藏条件把 `user-data/uosc/menu/type ~= nil` 视为“前台覆盖层打开”，菜单一开就 `overlay-remove` 启动页。
+- **修改**: `foreground_overlay_open()` 改为 `file_browser_open()`，仅文件浏览器打开时隐藏启动页；uosc 菜单打开不再触发隐藏。保留 `user-data/uosc/menu/type` 观察器（重渲染无副作用）。
+- **验证**: 完整配置 idle 启动，注入 `user-data/uosc/menu/type=standard` 后启动页仍 active=yes、height=320。
+- **Git 状态**: 修复未提交（随下版发布）；`master` 与 `origin/master` 同步。
+
+### 2026-08-07 21:58 会话: 移植 uosc 音量条样式
+
+- **用户反馈**: mpv-Yaozhi 的音量条样式没有移植过来。
+- **参考**: 用户提供 `tmp/Yaozhi-mpv-8.7+.7z`，提取其 `uosc/elements/Volume.lua` 对比。
+- **差异**: 本地为标准 uosc 5.13 样式（nudge 路径滑块、无面板、数字内嵌滑块）；参考版为竖直圆角轨道 + 青色填充 + 圆形把手 + 底部大号加粗数字 + 半透明悬浮面板 + 静音状态变色图标。
+- **修改**（`portable_config/scripts/uosc/elements/Volume.lua`）:
+  - 滑块改为竖直细轨道（宽 10%）、轨道底色 fg + 填充 config.color.match、圆形把手（match 色）。
+  - 音量数字移到轨道下方保留区，加粗、白字黑边、字号 width×0.44。
+  - 音量面板高度改为 size×6，边距改为 size + border，形成悬浮面板。
+  - 面板背景：bg 82% 透明度圆角矩形；静音图标单图标（去 underlay），静音时用 menu_active 色。
+  - 静音点击改 primary_click + toggle_mute 方法；保留右键重置音量。
+  - 未引入品牌字样；依赖（ass:rect/circle/txt、config.color.match/menu_active、state.radius、cursor primary_click）均已在本地 5.13 存在。
+- **验证**: luajit 语法通过；完整配置真实播放，触发 音量42→静音→88 过程无任何 uosc Lua 错误，正常退出。
+- **Git 状态**: 修改未提交（随下版发布）；`master` 与 `origin/master` 同步；用户提供的 7z 保留在 tmp/。
+
+### 2026-08-07 22:10 会话: 音量条 100 刻度标记
+
+- **用户需求**: 在音量 100 处用两个小三角形做标记，并尝试点击标记快速调到 100。
+- **修正**（`portable_config/scripts/uosc/elements/Volume.lua`）:
+  - 最初实现误把标记放在轨道顶部（即 volume_max=130 处）；用户指出最大音量为 130，100 刻度应在轨道 100/130≈76.9% 处。
+  - 标记位置改用 `marker_fraction = clamp(0, 100 / state.volume_max, 1)`，两个三角形尖端指向轨道中心线，位于 100 刻度处。
+  - 点击标记改为 `set volume 100` + 取消静音（不再设 volume_max）；点击区域随 100 刻度位置移动。
+- **验证**: `volume-max=130` 实测确认（mpv.conf 默认，未显式设置）；标记分数 0.7692；真实播放音量 42→100 渲染无错误，RENDER-DONE。
+- **说明**: 前一轮测试日志提前退出是用户手动关闭窗口，非脚本问题。
+- **Git 状态**: 修改未提交（随下版发布）；`master` 与 `origin/master` 同步。
