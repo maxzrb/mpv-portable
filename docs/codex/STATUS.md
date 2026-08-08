@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.2 发布准备中：uosc 增强（章节三角形/菜单级联/毛玻璃/打开方式）已整理待提交；构建与发布待执行 |
+| **工作区** | v1.4.2 构建完成待发布：校验和已记录，Release 待创建 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.2 发布启动：用户指定版本 1.4.2；发布前置检查完成 |
+| **上次操作** | v1.4.2 构建完成并通过验证（7z t / 门禁 / SHA-256 已写入迭代记录） |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1549,3 +1549,18 @@ c:\Program portable\mpv2\
     - `git diff --check` 通过；9 个文件 UTF-8 无 BOM、LF 换行。
     - 完整配置真实播放（WAV）：1431 行日志无 [e]/[f]（排除环境 IPC）、无 Lua/uosc 错误。
 - **计划**: 两个功能提交 → 构建 v1.4.2（含全量包）→ 构建后验证 → 更新记录并提交构建结果 → 创建标签与正式 Release（5 公开资产，不传全量包）→ 收尾。
+
+### 2026-08-08 16:35 会话: v1.4.2 构建与验证完成
+
+- **提交**（功能 → 文档）:
+  - `d7c493d` docs: record v1.4.2 pre-release checks。
+  - `47ef8ef` feat: 进度条章节三角形标记与悬停渐隐。
+  - `2a77fec` feat: uosc 菜单级联定位、毛玻璃、子菜单延迟与打开方式开关。
+- **构建**（`build-all-packages.ps1 -Version 1.4.2 -IncludePrivate`）:
+  - 01 Base 95.5MB；02 Extras 分卷 1900MB / 745.4MB；03 FW 1408MB；04 LSFG 3.1MB；05 Config 33MB；全量包 4187MB（仅本地）。
+- **构建后验证（第 5 节）**:
+  - 6 个归档（含全量包）`7z t` 全部 Everything is Ok。
+  - 门禁：01 含 script-assets、无 window_state.conf；05 无 script-assets、无 window_state.conf；04 0 EXE、仅 Lossless.dll + lsfg-vk-layer.dll；各公开包无顶层禁入项。
+  - 分卷 02 .001 1900MB / .002 745.4MB，符合 GitHub 2GB 限制。
+  - SHA-256 已写入 `version/版本迭代记录.md` v1.4.2 一节；v1.4.1 已移入历史。
+- **下一步**: 创建标签 v1.4.2 → 正式 Release（5 公开资产，不传全量包）→ 收尾。
