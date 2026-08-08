@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.2 构建完成待发布：校验和已记录，Release 待创建 |
+| **工作区** | v1.4.2 已正式发布；工作树干净，master 与 origin/master 同步 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.2 构建完成并通过验证（7z t / 门禁 / SHA-256 已写入迭代记录） |
+| **上次操作** | v1.4.2 正式发布完成：6 公开资产上传并核对一致；全量包仅本地；发布结果记录待提交 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1564,3 +1564,13 @@ c:\Program portable\mpv2\
   - 分卷 02 .001 1900MB / .002 745.4MB，符合 GitHub 2GB 限制。
   - SHA-256 已写入 `version/版本迭代记录.md` v1.4.2 一节；v1.4.1 已移入历史。
 - **下一步**: 创建标签 v1.4.2 → 正式 Release（5 公开资产，不传全量包）→ 收尾。
+
+### 2026-08-08 16:55 会话: v1.4.2 发布完成（收尾）
+
+- **标签/Release**:
+  - annotated tag v1.4.2（d5f4fea）指向 `b2fc557`；master 与标签已推送，`master` 与 `origin/master` 同步。
+  - `gh release create v1.4.2`：正式发布（非草稿、非预发布），上传 6 个公开资产（01、02.001、02.002、03、04、05）；全量包未上传。
+  - Release: https://github.com/maxzrb/mpv-portable/releases/tag/v1.4.2
+- **资产核对**: 远端 6 资产名称与字节大小和本地完全一致。
+- **清理**: `build/` 暂存目录与 `tmp/release-notes-v1.4.2.md` 已删除；`release/` 保留本地产物与全量包（仅本地）。
+- **Git 状态**: 发布结果记录待提交；随后确认工作树干净。
