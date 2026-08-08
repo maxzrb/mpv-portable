@@ -1507,3 +1507,17 @@ c:\Program portable\mpv2\
     - 完整配置真实播放测试（WAV + `--vo=null --ao=null`）: 1431 行日志 **0 个 [e]/[f] 错误**；uosc 正常加载并读取 `script-opts/uosc.conf`。
     - 仿真验证: 高频横跳最后 1 秒 0~2 次变化；趋势跟随正常。
 - **计划**: 提交功能改动 → 构建 v1.4.1 全包（含全量包）→ 构建后验证 → 更新校验和 → 删除旧 v1.4.1 标签/Release → 重建正式 Release（5 公开资产）→ 收尾。
+
+### 2026-08-08 11:22 会话: v1.4.1 重建构建与验证完成
+
+- **构建**（`build-all-packages.ps1 -Version 1.4.1 -IncludePrivate`）:
+  - 01 Base 95.5MB；02 Extras 分卷 1900MB / 745.4MB；03 FW 1408MB；04 LSFG 3.1MB；05 Config 33MB；全量包 4187MB（仅本地）。
+- **构建后验证（第 5 节）**:
+  - 6 个归档（含全量包）`7z t` 全部 Everything is Ok。
+  - 门禁：01 含 script-assets、无 window_state.conf；05 无 script-assets、无 window_state.conf；04 0 EXE、仅 Lossless.dll + lsfg-vk-layer.dll；各公开包无 `^build|release|tmp|.git`、`__pycache__`、`.pyc`、`.log` 顶层禁入项。
+  - 分卷 02 .001 1900MB / .002 745.4MB，符合 GitHub 2GB 限制。
+  - 新 SHA-256 已写入 `version/版本迭代记录.md`。
+- **提交**:
+  - `be3447b` feat: media info 码率胶囊点击切换实时/平均码率并支持平滑滤波。
+  - `f19644a` docs: 发布流程 Release 说明检查项移除已知限制要求（用户修订）。
+- **下一步**: 删除旧 v1.4.1 标签与 Release，重建标签指向发布提交，创建正式 Release 上传 5 个公开资产（不传全量包），然后收尾。
