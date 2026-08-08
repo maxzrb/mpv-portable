@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.1 已重建发布（media info 更新合并）；工作树干净，master 与 origin/master 同步 |
+| **工作区** | v1.4.2 发布准备中：uosc 增强（章节三角形/菜单级联/毛玻璃/打开方式）已整理待提交；构建与发布待执行 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.1 重建覆盖发布完成：旧 Release/标签已删，新正式 Release 6 资产上传并核对一致；全量包仅本地 |
+| **上次操作** | v1.4.2 发布启动：用户指定版本 1.4.2；发布前置检查完成 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1531,3 +1531,21 @@ c:\Program portable\mpv2\
 - **资产核对**: 远端 6 资产名称与字节大小和本地完全一致；Release: https://github.com/maxzrb/mpv-portable/releases/tag/v1.4.1
 - **清理**: `build/` 暂存目录已删除；`tmp/release-notes-v1.4.1.md` 已删除；`release/` 保留本地产物与全量包（仅本地）。
 - **Git 状态**: 待提交发布结果记录；随后确认 master 与 origin/master 同步、工作树干净。
+
+### 2026-08-08 16:20 会话: v1.4.2 发布前置检查
+
+- **用户指令**: 按发布流程发布 1.4.2（个人全量包照常生成，仅本地）。
+- **本次发布功能**（9 个文件未提交）:
+  - 进度条章节标记：两个暗夜蓝色小三角形（替代原菱形）+ `chapter_display=yes` 默认开启 + `CTRL+SHIFT+C` 切换快捷键。
+  - 进度条悬停渐隐：速度滑块与 media info 胶囊按鼠标 Y 距离平滑淡出（`utils.lua` 新增 `get_timeline_hover_fade`）。
+  - uosc 菜单：级联方向一致性与重叠检测（两阶段绘制保证 z-order）、子菜单 hover 延迟展开（`menu_submenu_delay=0.5`）、毛玻璃伪效果（`menu_frosted=yes`）、1px 边缘条与重叠兜底不透明。
+  - 打开方式：打开文件菜单顶部的「替换当前实例 / 新实例」单选选项，持久化 `menu_open_file_mode`。
+- **发布前置检查（《发布流程.md》3.1-3.4）**:
+  - 3.1 Git: `master` 与 `origin/master` 同步；9 个文件未提交；`window_size_position.conf` 运行时自动写回已还原（非有意改动）。
+  - 3.2 大改动 Gate: 不触发（全部为 uosc 脚本/配置/菜单改动，不涉及包结构、构建脚本、核心运行时、版权边界）。
+  - 3.3 文档: 本 STATUS.md 记录；构建后更新 `version/版本迭代记录.md`（新增 v1.4.2 一节）与 `version/工作进度.md`。
+  - 3.4 功能验证:
+    - `luajit loadfile` 通过全部 7 个改动 Lua 文件。
+    - `git diff --check` 通过；9 个文件 UTF-8 无 BOM、LF 换行。
+    - 完整配置真实播放（WAV）：1431 行日志无 [e]/[f]（排除环境 IPC）、无 Lua/uosc 错误。
+- **计划**: 两个功能提交 → 构建 v1.4.2（含全量包）→ 构建后验证 → 更新记录并提交构建结果 → 创建标签与正式 Release（5 公开资产，不传全量包）→ 收尾。
