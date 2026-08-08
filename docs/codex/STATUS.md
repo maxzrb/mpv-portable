@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.1 重建中：media info 更新（实时码率含音频/点击切换/平滑）已合并；构建与覆盖发布待执行 |
+| **工作区** | v1.4.1 已重建发布（media info 更新合并）；工作树干净，master 与 origin/master 同步 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.1 重建覆盖启动：用户确认重建 v1.4.1，全量包照常生成（仅本地） |
+| **上次操作** | v1.4.1 重建覆盖发布完成：旧 Release/标签已删，新正式 Release 6 资产上传并核对一致；全量包仅本地 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1521,3 +1521,13 @@ c:\Program portable\mpv2\
   - `be3447b` feat: media info 码率胶囊点击切换实时/平均码率并支持平滑滤波。
   - `f19644a` docs: 发布流程 Release 说明检查项移除已知限制要求（用户修订）。
 - **下一步**: 删除旧 v1.4.1 标签与 Release，重建标签指向发布提交，创建正式 Release 上传 5 个公开资产（不传全量包），然后收尾。
+
+### 2026-08-08 11:45 会话: v1.4.1 重建发布完成（收尾）
+
+- **标签/Release 重建**:
+  - 删除旧本地 tag v1.4.1（f190ee4）与远端 Release v1.4.1（--cleanup-tag 同步删除远端 tag）。
+  - 创建新 annotated tag v1.4.1（fb4f49a）指向发布提交 `c322b09`，推送 master 与 tag。
+  - `gh release create v1.4.1`：正式发布（非草稿、非预发布），上传 6 个公开资产（01、02.001、02.002、03、04、05）；个人全量包未上传。
+- **资产核对**: 远端 6 资产名称与字节大小和本地完全一致；Release: https://github.com/maxzrb/mpv-portable/releases/tag/v1.4.1
+- **清理**: `build/` 暂存目录已删除；`tmp/release-notes-v1.4.1.md` 已删除；`release/` 保留本地产物与全量包（仅本地）。
+- **Git 状态**: 待提交发布结果记录；随后确认 master 与 origin/master 同步、工作树干净。
