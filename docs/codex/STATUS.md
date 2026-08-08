@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.2 重建覆盖中：右键菜单定位修复（根菜单不再被级联预留宽度挤到左侧）已合并；构建与覆盖发布待执行 |
+| **工作区** | v1.4.2 重建完成待发布：新校验和已记录，Release 待重建 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.2 重建覆盖启动：用户确认重建 v1.4.2，全量包照常生成（仅本地） |
+| **上次操作** | v1.4.2 重建构建完成并通过验证；release 已先清空再构建，无新旧混淆 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1589,3 +1589,15 @@ c:\Program portable\mpv2\
     - 完整配置真实播放（WAV）：1432 行日志无 [e]/[f]（排除环境 IPC）、无 Lua/Menu 错误。
     - 边界仿真：右键任意位置（含贴边）根菜单不越界，子菜单展开仍走级联定位。
 - **计划**: 提交功能修复 → 构建 v1.4.2 全包（含全量包）→ 构建后验证 → 重写校验和 → 删除旧 v1.4.2 标签/Release → 重建正式 Release（5 公开资产）→ 收尾。
+
+### 2026-08-08 17:58 会话: v1.4.2 重建构建与验证完成
+
+- **提交**: `2bb3bfe` fix: 右键菜单根菜单定位不再被级联预留宽度挤到左侧。
+- **清理**: 按用户要求先清空 release（删除全部旧 v1.4.2 产物 + 中断残留 `.001.tmp`），并终止中断构建残留的 7z 孤儿进程；build 暂存同步清理。
+- **构建**（`build-all-packages.ps1 -Version 1.4.2 -IncludePrivate`）: 01 Base 95.5MB；02 分卷 1900MB / 745.4MB；03 FW 1408MB；04 LSFG 3.1MB；05 Config 33MB；全量包 4187MB（仅本地）。
+- **构建后验证（第 5 节）**:
+  - 6 个归档（含全量包）`7z t` 全部 Everything is Ok。
+  - 门禁：01 含 script-assets、无 window_state.conf；05 无 script-assets、无 window_state.conf；04 0 EXE、仅 Lossless.dll + lsfg-vk-layer.dll；各公开包与全量包无顶层禁入项。
+  - 分卷 02 .001 1900MB / .002 745.4MB，符合 GitHub 2GB 限制。
+  - 新 SHA-256（7 个）已替换 `version/版本迭代记录.md` v1.4.2 一节，并追加右键菜单定位修复记录。
+- **下一步**: 删除旧 v1.4.2 标签与 Release，重建正式 Release（5 公开资产，不传全量包），收尾。
