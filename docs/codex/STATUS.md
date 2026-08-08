@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.2 重建完成待发布：新校验和已记录，Release 待重建 |
+| **工作区** | v1.4.2 已重建发布（含右键菜单定位修复）；工作树干净，master 与 origin/master 同步 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.2 重建构建完成并通过验证；release 已先清空再构建，无新旧混淆 |
+| **上次操作** | v1.4.2 重建覆盖发布完成：旧 Release/标签已删，新正式 Release 6 资产上传并核对一致；全量包仅本地 |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1601,3 +1601,13 @@ c:\Program portable\mpv2\
   - 分卷 02 .001 1900MB / .002 745.4MB，符合 GitHub 2GB 限制。
   - 新 SHA-256（7 个）已替换 `version/版本迭代记录.md` v1.4.2 一节，并追加右键菜单定位修复记录。
 - **下一步**: 删除旧 v1.4.2 标签与 Release，重建正式 Release（5 公开资产，不传全量包），收尾。
+
+### 2026-08-08 18:10 会话: v1.4.2 重建发布完成（收尾）
+
+- **标签/Release 重建**:
+  - 删除旧本地 tag v1.4.2（d5f4fea）与远端 Release v1.4.2（--cleanup-tag 同步删除远端 tag）。
+  - 创建新 annotated tag v1.4.2（5a4dae5）指向发布提交 `521273e`，推送 master 与 tag。
+  - `gh release create v1.4.2`：正式发布（非草稿、非预发布），上传 6 个公开资产；个人全量包未上传。
+- **资产核对**: 远端 6 资产名称与字节大小和本地完全一致；Release: https://github.com/maxzrb/mpv-portable/releases/tag/v1.4.2
+- **清理**: `build/` 暂存目录与 `tmp/release-notes-v1.4.2.md` 已删除；`release/` 保留本地产物与全量包（仅本地）。
+- **Git 状态**: 待提交发布结果记录；随后确认 master 与 origin/master 同步、工作树干净。
