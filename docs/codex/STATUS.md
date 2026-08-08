@@ -7,10 +7,10 @@
 | **项目** | MPV 便携播放器个人配置（fork from gaoxing64/MPV-lazy-full v2.0.0） |
 | **分支** | `master`（领先 `origin/master` 1 个提交，功能提交已本地化） |
 | **最新发布提交** | `909dede`（tag: `v1.4.1`） |
-| **工作区** | v1.4.1 已正式发布；v1.4.0 Release 与标签已删除合并；个人全量包仅本地 |
+| **工作区** | v1.4.1 重建中：media info 更新（实时码率含音频/点击切换/平滑）已合并；构建与覆盖发布待执行 |
 | **MPV 核心版本** | v0.41.0-860-gc8c7d91a8 (2026-07-06, dyphire/mpv-winbuild) |
 | **项目版本** | v1.4.1（已发布） |
-| **上次操作** | v1.4.1 正式发布（合并 v1.4.0）：6 个公开资产上传完成，v1.4.0 Release/标签已删除 |
+| **上次操作** | v1.4.1 重建覆盖启动：用户确认重建 v1.4.1，全量包照常生成（仅本地） |
 | **自定义脚本** | `stats.lua`、`quality_status.lua`、`lsfg_control.lua` |
 
 ## 环境
@@ -1489,3 +1489,21 @@ c:\Program portable\mpv2\
 - **验证**: 远端 6 资产全部 uploaded，SHA-256 与本地记录一致；`git ls-remote --tags origin v1.4.0` 无结果、`v1.4.1` 存在；`master` 与 `origin/master` 同步。
 - **清理**: build/ 暂存目录已清空；tmp/ 删除中断下载的重复 Yaozhi 包（保留用户提供的 `Yaozhi-mpv-8.7+.7z`）；临时 release notes 已删除。
 - **Git 状态**: 发布结果记录待提交。
+
+### 2026-08-08 10:58 会话: v1.4.1 重建覆盖（media info 更新合并，发布前检查）
+
+- **用户指令**: 将 media info 更新合并到 v1.4.1，重建覆盖 v1.4.1；个人全量包照常生成（仅本地保留，禁止上传）。
+- **本次改动**（3 个文件，未提交）:
+  - `portable_config/scripts/uosc/elements/MediaInfo.lua`: 实时码率=视频+音频；码率胶囊点击在实时/平均码率间循环；两级 EMA 平滑（短期平均+自适应时间常数+滞回）解决高频横跳。
+  - `portable_config/scripts/uosc/main.lua`: 新增 `media_info_bitrate_smoothing=0.6`、`media_info_bitrate_deadband=0.01` 默认值。
+  - `portable_config/script-opts/uosc.conf`: 新增上述两个可配置项。
+- **发布前置检查（《发布流程.md》3.1-3.4）**:
+  - 3.1 Git: `master` 与 `origin/master` 同步；仅上述 3 文件未提交；`git fetch origin` 无远端新改动。
+  - 3.2 大改动 Gate: 不触发（普通功能/配置/脚本改动，不涉及包结构、构建脚本、核心运行时、版权边界）。
+  - 3.3 文档: 本次功能清单与验证写入本 STATUS.md；`version/版本迭代记录.md` 校验和将在构建后重写；`version/工作进度.md` 构建后追加。
+  - 3.4 功能验证:
+    - `luajit loadfile` 通过: uosc/main.lua、MediaInfo.lua、media-format-info.lua。
+    - `git diff --check` 通过；三个文件 UTF-8 无 BOM、LF 换行。
+    - 完整配置真实播放测试（WAV + `--vo=null --ao=null`）: 1431 行日志 **0 个 [e]/[f] 错误**；uosc 正常加载并读取 `script-opts/uosc.conf`。
+    - 仿真验证: 高频横跳最后 1 秒 0~2 次变化；趋势跟随正常。
+- **计划**: 提交功能改动 → 构建 v1.4.1 全包（含全量包）→ 构建后验证 → 更新校验和 → 删除旧 v1.4.1 标签/Release → 重建正式 Release（5 公开资产）→ 收尾。

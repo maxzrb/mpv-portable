@@ -30,6 +30,8 @@ defaults = {
 	timeline_heatmap = 'overlay',
 	timeline_mbtn_right = '',
 	media_info = true,
+	media_info_bitrate_smoothing = 0.6,
+	media_info_bitrate_deadband = 0.01,
 
 	controls =
 	'menu,gap,<video,audio>subtitles,<has_many_audio>audio,<has_many_video>video,<has_many_edition>editions,<stream>stream-quality,gap,space,<video,audio>speed,space,shuffle,loop-playlist,loop-file,gap,prev,items,next,gap,fullscreen',

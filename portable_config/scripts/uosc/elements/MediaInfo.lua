@@ -41,16 +41,95 @@ local function format_rate(bits_per_second)
 	return string.format('%d Kbps', math.floor(value / 1000 + 0.5))
 end
 
-local function read_bitrate()
-	local bitrate = mp.get_property_number('video-bitrate', 0)
-	if bitrate > 0 then return format_rate(bitrate) end
-	local track = mp.get_property_native('current-tracks/video', {})
-	bitrate = type(track) == 'table' and tonumber(track['demux-bitrate']) or 0
-	if bitrate and bitrate > 0 then return format_rate(bitrate) end
+-- 实时码率：视频 + 音频（mpv 实时属性）
+local function read_live_bitrate()
+	local video = mp.get_property_number('video-bitrate', 0)
+	local audio = mp.get_property_number('audio-bitrate', 0)
+	local bitrate = (video or 0) + (audio or 0)
+	if bitrate > 0 then return bitrate end
+	-- 兜底：当前视频/音频轨道 demux 码率求和
+	local vtrack = mp.get_property_native('current-tracks/video', {})
+	local atrack = mp.get_property_native('current-tracks/audio', {})
+	local vbr = type(vtrack) == 'table' and tonumber(vtrack['demux-bitrate']) or 0
+	local abr = type(atrack) == 'table' and tonumber(atrack['demux-bitrate']) or 0
+	bitrate = (vbr or 0) + (abr or 0)
+	if bitrate > 0 then return bitrate end
+	return 0
+end
+
+-- 平均码率：文件总大小 / 时长（含音频及全部封装数据）
+local function read_average_bitrate()
 	local size = mp.get_property_number('file-size', 0)
 	local duration = mp.get_property_number('duration', 0)
-	if size > 0 and duration > 0 then return format_rate(size * 8 / duration) end
-	return ''
+	if size > 0 and duration > 0 then return size * 8 / duration end
+	return 0
+end
+
+-- 实时码率平滑：视频/音频属性的刷新频率不同，直接求和会时快时慢地跳。
+-- 用按时间常数的指数移动平均，让显示值以均匀速度逼近目标值。
+local function smooth_bitrate(filter, target)
+	local tau = options.media_info_bitrate_smoothing or 0
+	if tau <= 0 then
+		-- 平滑关闭：直接显示目标值
+		filter.value, filter.time, filter.display, filter.mean = target, mp.get_time(), target, target
+		return target
+	end
+	local now = mp.get_time()
+	if filter.time <= 0 then
+		-- 首个样本直接采用，避免文件开头从 0 缓慢爬升
+		filter.value, filter.time, filter.display, filter.mean = target, now, target, target
+		return target
+	end
+	local dt = math.max(0, now - filter.time)
+	filter.time = now
+
+	-- 一级滤波：短期平均，抹掉帧级高频抖动（如 VBR 场景切换时的码率横跳）
+	local short_tau = math.max(0.2, tau / 5)
+	local alpha1 = dt > 0 and (1 - math.exp(-dt / short_tau)) or 1
+	filter.mean = filter.mean + (target - filter.mean) * alpha1
+
+	-- 二级滤波：基于短期平均做平滑，波动越大时间常数越大，抑制剧烈抖动
+	local deviation = math.abs(filter.mean - filter.display) / math.max(math.abs(filter.display), 1)
+	local smooth_tau = tau
+	if deviation >= 0.5 then
+		smooth_tau = tau * 3
+	elseif deviation >= 0.25 then
+		smooth_tau = tau * 2
+	end
+
+	-- 严格按时间常数的 EMA。不设下限（高频刷新时自然平滑），
+	-- 仅限制单次最大步长，防止低频刷新或突变时数字瞬跳
+	local alpha2 = dt > 0 and (1 - math.exp(-dt / smooth_tau)) or 1
+	alpha2 = math.min(alpha2, 0.3)
+	filter.value = filter.value + (filter.mean - filter.value) * alpha2
+
+	-- 滞回阈值：与当前显示值偏差不足该比例时不更新显示，避免数字来回跳
+	local threshold = options.media_info_bitrate_deadband or 0.02
+	if math.abs(filter.value - filter.display) / math.max(math.abs(filter.display), 1) >= threshold then
+		filter.display = filter.value
+	end
+	return filter.display
+end
+
+local function read_bitrate(mode, filter)
+	-- 返回格式化字符串与是否为平均值，标签随实际数据源显示
+	local live, avg = read_live_bitrate(), read_average_bitrate()
+	local bitrate, is_avg
+	if mode == 'avg' and avg > 0 then
+		bitrate, is_avg = avg, true
+	elseif mode == 'live' and live > 0 then
+		bitrate, is_avg = live, false
+	elseif avg > 0 then
+		bitrate, is_avg = avg, true
+	elseif live > 0 then
+		bitrate, is_avg = live, false
+	end
+	if bitrate and bitrate > 0 then
+		-- 仅实时码率需要平滑；平均码率是常量，直接显示
+		if not is_avg and filter then bitrate = smooth_bitrate(filter, bitrate) end
+		return format_rate(bitrate), is_avg
+	end
+	return '', false
 end
 
 local function read_network_speed()
@@ -88,7 +167,7 @@ local function append(parts, text, tone, group, compact_before)
 	end
 end
 
-local function build_segments()
+local function build_segments(mode, filter)
 	local info = MediaFormatInfo.collect()
 	if not info.video_present then return {} end
 	local parts = {}
@@ -112,10 +191,13 @@ local function build_segments()
 	if output_format:find('spdif-', 1, true) == 1 then
 		append(parts, '源码直通', 'hero', 'audio', true)
 	end
-	local bitrate = read_bitrate()
+	local bitrate, is_avg = read_bitrate(mode, filter)
 	if bitrate ~= '' then
-		append(parts, '码率', 'muted', 'throughput')
+		append(parts, is_avg and '平均码率' or '实时码率', 'muted', 'throughput')
 		append(parts, bitrate, 'primary', 'throughput', true)
+		-- 标记可点击：点击后在实时码率 / 平均码率之间循环切换
+		parts[#parts - 1].click_target = 'bitrate'
+		parts[#parts].click_target = 'bitrate'
 	end
 	local network = read_network_speed()
 	if network ~= '' then
@@ -148,6 +230,8 @@ local function render_segments(ass, x, y, segments, visibility, max_width)
 	}
 	local hero_accent = config.color.menu_active or config.color.match
 		or config.color.menu_foreground or fg
+	-- 记录可点击文本（如码率）的命中区域，供 render 注册鼠标事件
+	local click_hits = {}
 	local function visual_group(segment)
 		local group = segment.group or segment.tone or 'base'
 		if group == 'decode' or group == 'picture' then return 'picture' end
@@ -222,27 +306,56 @@ local function render_segments(ass, x, y, segments, visibility, max_width)
 		local text_x = cursor_x + capsule_padding
 		for index, item in ipairs(prepared) do
 			if index > 1 then text_x = text_x + item.gap_before end
+			local item_x0 = text_x
 			ass:txt(text_x, y, 4, item.segment.text, item.opts)
 			text_x = text_x + item.width
+			-- 同一 click_target 的连续文本合并为一个命中区（码率标签 + 数值）
+			if item.segment.click_target then
+				local target = item.segment.click_target
+				local hit = click_hits[target]
+				if not hit then
+					hit = {
+						ax = item_x0,
+						ay = y - capsule_height / 2,
+						bx = text_x,
+						by = y + capsule_height / 2,
+					}
+					click_hits[target] = hit
+				else
+					hit.bx = text_x
+				end
+			end
 		end
 
 		cursor_x = cursor_x + capsule_width
 	end
+	return click_hits
 end
 
 function MediaInfo:new() return Class.new(self) --[[@as MediaInfo]] end
 
 function MediaInfo:init()
 	Element.init(self, 'media_info', {render_order = 5.5, anchor_id = 'controls'})
+	-- 码率显示模式：'live' 实时码率 / 'avg' 平均码率，点击胶囊文本循环切换
+	self.bitrate_mode = 'live'
+	-- 实时码率平滑滤波器状态：value=内部跟踪值，display=实际显示值，mean=短期平均
+	self.bitrate_filter = { value = 0, time = 0, display = 0, mean = 0 }
 	local function refresh() request_render() end
 	for _, property in ipairs({
 		'hwdec-current', 'video-params', 'estimated-vf-fps', 'container-fps',
-		'video-bitrate', 'audio-codec', 'audio-params', 'audio-out-params/format',
+		'video-bitrate', 'audio-bitrate', 'audio-codec', 'audio-params', 'audio-out-params/format',
 		'current-tracks/video', 'current-tracks/audio', 'cache-speed',
 	}) do
 		self:observe_mp_property(property, 'native', refresh)
 	end
-	self:register_mp_event('file-loaded', refresh)
+	self:register_mp_event('file-loaded', function()
+		-- 切换文件后重置平滑状态，避免沿用上一文件的码率
+		self.bitrate_filter.value = 0
+		self.bitrate_filter.time = 0
+		self.bitrate_filter.display = 0
+		self.bitrate_filter.mean = 0
+		refresh()
+	end)
 	self:register_mp_event('video-reconfig', refresh)
 end
 
@@ -284,7 +397,7 @@ function MediaInfo:render()
 	if not state.is_video or state.is_idle then return end
 	local visibility = self:get_visibility()
 	if visibility <= 0 then return end
-	local segments = build_segments()
+	local segments = build_segments(self.bitrate_mode, self.bitrate_filter)
 	if #segments == 0 then return end
 
 	local scale = state.scale
@@ -309,7 +422,16 @@ function MediaInfo:render()
 		if min_y <= max_y then mi_y = clamp(min_y, mi_y, max_y) end
 	end
 
-	render_segments(ass, mi_x, mi_y, segments, visibility, timeline.bx - mi_x)
+	local click_hits = render_segments(ass, mi_x, mi_y, segments, visibility, timeline.bx - mi_x)
+
+	-- 码率胶囊点击：实时码率 / 平均码率 循环切换
+	local bitrate_hit = click_hits and click_hits.bitrate
+	if bitrate_hit then
+		cursor:zone('primary_click', bitrate_hit, function()
+			self.bitrate_mode = self.bitrate_mode == 'avg' and 'live' or 'avg'
+			request_render()
+		end)
+	end
 	return ass
 end
 
