@@ -572,19 +572,6 @@ function Menu:update_dimensions()
 	-- Rendering used to walk the complete submenu tree on every frame just to
 	-- reserve cascade width. Cache it whenever dimensions change so short menu
 	-- fades and scroll flings do not multiply that work.
-	local function cache_cascade_width(menu)
-		local max_child_width = 0
-		for _, item in ipairs(menu.items) do
-			if item.items then
-				max_child_width = math.max(max_child_width,
-					self.gap + cache_cascade_width(item --[[@as MenuStack]]))
-			end
-		end
-		menu.cascade_width = menu.width + self.padding * 2 + max_child_width
-		return menu.cascade_width
-	end
-	cache_cascade_width(self.root)
-
 	self:update_coordinates()
 end
 
@@ -593,15 +580,12 @@ function Menu:update_coordinates()
 	local centered_ax = round((display.width - self.current.width) / 2 - self.padding)
 	local ax = centered_ax + self.offset_x
 	if self.anchor_x and self.current.is_root then
-		-- 根菜单的水平位置跟随右键光标，同时保证整条级联链不超出屏幕
-		local cascade_width = self.current.cascade_width or (self.current.width + self.padding * 2)
+		-- 根菜单跟随右键光标：只按根菜单自身宽度保证不超出屏幕。
+		-- 不再为整条子菜单链预留展开宽度（否则根菜单会被压到左侧、脱离光标），
+		-- 子菜单展开时的放不下/翻转/贴边由展开期级联定位逻辑处理。
+		local root_width = self.current.width + self.padding * 2
 		local min_x = self.padding
-		local max_x = math.max(min_x, display.width - self.padding - cascade_width)
-		-- 级联链预估宽度超过屏幕时，退化为只保证根菜单留在屏幕内，
-		-- 否则根菜单会被整条级联的预留宽度压到最左边，横向不再跟随光标。
-		if max_x <= min_x then
-			max_x = math.max(min_x, display.width - self.padding - (self.current.width + self.padding * 2))
-		end
+		local max_x = math.max(min_x, display.width - self.padding - root_width)
 		ax = clamp(min_x, self.anchor_x - round(10 * state.scale), max_x)
 	end
 	self:set_coordinates(
@@ -2641,20 +2625,17 @@ function Menu:render()
 		return bg_rect
 	end
 
-	-- Reserve the widest possible submenu path from the first frame. The value
-	-- is cached in update_dimensions() to keep menu animation/rendering cheap.
-	local cascade_width = self.current.cascade_width or (self.current.width + self.padding * 2)
 	local cascade_x
 	if self.anchor_x and self.current.is_root then
+		-- 根菜单跟随右键光标，只按根菜单自身宽度保证不超出屏幕；
+		-- 子菜单展开空间由展开期级联定位处理（见 draw_menu 内 resolve 逻辑）
+		local root_width = self.current.width + self.padding * 2
 		local min_x = self.padding
-		local max_x = math.max(min_x, display.width - self.padding - cascade_width)
-		if max_x <= min_x then
-			max_x = math.max(min_x, display.width - self.padding - (self.current.width + self.padding * 2))
-		end
+		local max_x = math.max(min_x, display.width - self.padding - root_width)
 		cascade_x = clamp(min_x, self.anchor_x - round(10 * state.scale), max_x)
 	else
 		cascade_x = math.max(self.padding,
-			math.min(self.ax, display.width - self.padding - cascade_width))
+			math.min(self.ax, display.width - self.padding - (self.current.width + self.padding * 2)))
 	end
 
 	-- Active menu
