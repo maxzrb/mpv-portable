@@ -575,6 +575,27 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 		end
 
 		back_path = items[#items] and items[#items].value
+
+		-- 打开方式单选（仅打开文件菜单）：replace=替换当前实例，new=启动新实例，
+		-- 点击直接选中对应模式（当前模式高亮），避免 toggle 误切换
+		if opts.type == 'open-file' then
+			local new_mode = options.menu_open_file_mode == 'new'
+			items[#items + 1] = {
+				title = '打开方式：替换当前实例',
+				value = '{open-mode-replace}',
+				icon = 'autorenew',
+				active = not new_mode,
+				separator = true,
+			}
+			items[#items + 1] = {
+				title = '打开方式：新实例',
+				value = '{open-mode-new}',
+				icon = 'open_in_new',
+				active = new_mode,
+				separator = true,
+			}
+		end
+
 		local selected_index = #items + 1
 
 		for _, dir in ipairs(directories) do
@@ -649,6 +670,17 @@ function open_file_navigation_menu(directory_path, handle_activate, opts)
 	---@param only_if_dir? boolean Activate item only if it's a directory.
 	local function activate(event, only_if_dir)
 		local path = event.value
+		-- 打开方式单选：点击直接选中对应模式并持久化，刷新菜单显示新状态
+		if path == '{open-mode-replace}' or path == '{open-mode-new}' then
+			options.menu_open_file_mode = path == '{open-mode-new}' and 'new' or 'replace'
+			persist_uosc_option('menu_open_file_mode', options.menu_open_file_mode)
+			mp.osd_message(
+				options.menu_open_file_mode == 'new' and '打开视频：新 mpv 实例' or '打开视频：替换当前实例',
+				2
+			)
+			open_directory(current_directory)
+			return
+		end
 		local is_drives = path == '{drives}'
 
 		if is_drives then
@@ -762,7 +794,9 @@ do
 	end
 
 	function get_menu_items()
-		if menu_items then return menu_items end
+		if menu_items then
+			return menu_items
+		end
 
 		local all_user_bindings = get_all_user_bindings()
 		local main_menu = {items = {}, items_by_command = {}}
@@ -914,6 +948,35 @@ function open_stream_quality_menu()
 	end)
 end
 
+-- 定位 mpv 可执行文件：便携布局下 mpv.exe 与 portable_config 同目录，
+-- 从 `~~/`（配置目录）父级推导；失败回退命令名（依赖 PATH/工作目录）
+local function find_mpv_executable()
+	local config_dir = mp.command_native({'expand-path', '~~/'})
+	if config_dir and config_dir ~= '' then
+		local parent = select(1, utils.split_path(config_dir))
+		if parent and parent ~= '' then
+			local candidate = utils.join_path(
+				parent,
+				state.platform == 'windows' and 'mpv.exe' or 'mpv'
+			)
+			local info = utils.file_info(candidate)
+			if info and info.is_file then return candidate end
+		end
+	end
+	return state.platform == 'windows' and 'mpv.exe' or 'mpv'
+end
+
+-- 启动新 mpv 实例播放指定路径（保持当前实例不变）
+local function open_in_new_instance(path)
+	local executable = find_mpv_executable()
+	local args = {executable, path}
+	if state.platform == 'windows' then
+		utils.subprocess_detached({args = args, cancellable = false})
+	else
+		utils.subprocess({args = args, cancellable = false})
+	end
+end
+
 function open_open_file_menu()
 	if Menu:is_open('open-file') then
 		Menu:close()
@@ -959,8 +1022,16 @@ function open_open_file_menu()
 				local filename = serialized and serialized.basename or event.value
 				mp.commandv('show-text', t('Added to playlist') .. ': ' .. filename, 3000)
 			elseif itable_has({nil, 'ctrl', 'alt', 'alt+ctrl'}, event.modifiers) and itable_has({nil, 'force_open'}, event.action) then
-				mp.commandv(command, event.value)
-				if not event.alt then menu:close() end
+				-- 打开方式：new=启动新实例；replace=替换当前实例。
+				-- Ctrl+点击（force_open）始终在当前实例打开，作为显式覆盖
+				local is_force_open = event.action == 'force_open' or event.modifiers == 'ctrl'
+				if options.menu_open_file_mode == 'new' and not is_force_open then
+					open_in_new_instance(event.value)
+					menu:close()
+				else
+					mp.commandv(command, event.value)
+					if not event.alt then menu:close() end
+				end
 			end
 		end,
 		{

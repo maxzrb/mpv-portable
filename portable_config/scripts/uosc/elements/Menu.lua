@@ -33,7 +33,7 @@ local Menu = class(Element)
 -- Menu motion stays local because the global animation duration can be disabled.
 -- A short, shallow alpha transition softens context-menu open/close without
 -- re-enabling the legacy wide submenu slide animations.
-local menu_open_opacity = 0.82
+local menu_open_opacity = 0.98
 local menu_open_duration = 80
 local menu_close_duration = 60
 local wheel_scroll_rows = 2
@@ -254,6 +254,11 @@ function Menu:init(data, callback, opts)
 	self.scrollbar_hide_timer = mp.add_timeout(0.8, function() request_render() end)
 	self.scrollbar_hide_timer:kill()
 	self:register_disposer(function() self.scrollbar_hide_timer:kill() end)
+	-- 子菜单 hover 延迟展开：鼠标停到有子菜单的项上并停留满延迟时间后才真正绘制子菜单，
+	-- 避免快速扫过父菜单时误弹出子菜单挡住目标项
+	self.submenu_open_timer = mp.add_timeout(0, function() request_render() end)
+	self.submenu_open_timer:kill()
+	self:register_disposer(function() self.submenu_open_timer:kill() end)
 	self.search_cursor_visible = true
 	self.search_cursor_timer = mp.add_periodic_timer(search_cursor_blink_interval, function()
 		local menu = self.current
@@ -717,6 +722,8 @@ function Menu:select_index(index, menu_id)
 	local menu = self:get_menu(menu_id)
 	if not menu then return end
 	menu.selected_index = (index and index >= 1 and index <= #menu.items) and index or nil
+	-- 键盘/滚动等非鼠标导航立即展开子菜单，不套用 hover 延迟
+	menu.submenu_open_at = mp.get_time() - 1000
 	self:select_action(menu.action_index, menu_id) -- normalize selected action index
 	request_render()
 end
@@ -965,7 +972,13 @@ function Menu:activate_pointer_item(shortcut, target_menu, target_index)
 
 	-- Pointer navigation uses cascading panels. Hovering a submenu is enough to open it;
 	-- clicking the parent must not replace and recenter the current panel.
-	if item.items then return end
+	if item.items then
+		-- 鼠标明确点击有子菜单的项：跳过 hover 延迟，立即展开
+		menu.submenu_open_at = mp.get_time() - 1000
+		self.submenu_open_timer:kill()
+		request_render()
+		return
+	end
 
 	local actions = item.actions or menu.item_actions
 	local action = actions and menu.action_index and actions[menu.action_index]
@@ -1701,12 +1714,34 @@ function Menu:render()
 	local menu_title = config.color.menu_title or fg
 	local menu_title_text = config.color.menu_title_text or bg
 
+	-- 测量模式用的 no-op ASS 对象：任何方法调用都无副作用，
+	-- 用于阶段1 只计算子菜单链几何位置（不写入渲染缓冲、不绑定事件）
+	local noop_ass = setmetatable({}, {
+		__index = function() return function() end end,
+	})
+
 	---@param menu MenuStack
 	---@param x number
 	---@param pos number Horizontal position index. 0 = current menu, <0 parent menus, >1 submenu.
-	local function draw_menu(menu, x, pos)
+	---@param direction? number 级联展开方向：1 向右 / -1 向左。整条级联链保持一致，
+	---  避免子菜单左翻后深层子菜单又右开撞回右侧祖先造成重叠。
+	---@param force_opaque? boolean 极端窗口下子菜单无任何可用空间时允许重叠并强制不透明
+	---@param measure_only? boolean 只计算几何返回整条后代链合并 rect，不绘制、不绑定事件。
+	---  用于阶段1 悬停判断（真实整链 rect），阶段2 再真正绘制保证 z-order。
+	---@param chain_ax? number 本层及以上所有已绘制面板的水平范围左端（用于重叠检测）
+	---@param chain_bx? number 本层及以上所有已绘制面板的水平范围右端
+	local function draw_menu(menu, x, pos, direction, force_opaque, measure_only, chain_ax, chain_bx)
 		local is_current, is_parent, is_submenu = pos == 0, pos < 0, pos > 0
-		local menu_opacity = (pos == 0 and 1 or config.opacity.submenu ^ math.abs(pos)) * self.opacity
+		-- 测量模式：屏蔽 ASS 绘制与事件绑定（bind_zone 内部通过 cursor:zone 注册，
+		-- 全部走局部遮蔽；ass 用 no-op 对象拦截所有绘制调用）
+		local ass = measure_only and noop_ass or ass
+		local bind_zone = measure_only and function() end or bind_zone
+		local menu_opacity = (
+			force_opaque and 1
+			or pos == 0 and 1
+			or config.opacity.submenu ^ math.abs(pos)
+		) * self.opacity
+		local cascade_direction = direction or 1
 		-- Scrollable content area coordinates
 		local content_rect = {
 			ax = x + self.padding,
@@ -1816,11 +1851,41 @@ function Menu:render()
 		end
 
 		-- Background
+		-- 重叠兜底（force_opaque）时背景提升为完全不透明，确保下层菜单被完全遮盖；
+		-- 所有菜单绘制 1px 边缘条：普通菜单浅灰、兜底菜单白色高亮，重叠时也能看清边界。
+		local edge_border = math.max(1, round(1 * state.scale))
+		-- 毛玻璃（伪）：半透明背景 + 磨砂噪点 + 顶部高光。mpv ASS 无法真正模糊
+		-- 背后画面，此为视觉近似；重叠兜底时关闭保持内容清晰可读
+		local frosted = options.menu_frosted and not force_opaque
+		local bg_opacity = force_opaque and 1
+			or (menu_opacity * config.opacity.menu * (frosted and 0.82 or 1))
 		ass:rect(bg_rect.ax, bg_rect.ay, bg_rect.bx, bg_rect.by, {
 			color = menu_bg,
-			opacity = menu_opacity * config.opacity.menu,
+			opacity = {
+				main = bg_opacity,
+				border = force_opaque and 1 or menu_opacity * 0.55,
+			},
 			radius = state.radius > 0 and math.min(state.radius + self.padding, state.radius * 3) or 0,
+			border = edge_border,
+			border_color = force_opaque and 'FFFFFF' or (config.color.menu_foreground or fg),
 		})
+		if frosted then
+			-- 磨砂噪点：细颗粒铺满面板内部（内缩避开边缘条与圆角），模拟玻璃磨砂面
+			local noise_inset = edge_border + round(state.radius * 0.5)
+			ass:texture(
+				bg_rect.ax + noise_inset, bg_rect.ay + noise_inset,
+				bg_rect.bx - noise_inset, bg_rect.by - noise_inset,
+				'n',
+				{size = math.max(16, round(22 * state.scale)), color = fg, opacity = menu_opacity * 0.05}
+			)
+			-- 顶部高光条：模拟玻璃边缘反光
+			local highlight_h = math.max(2, round(3 * state.scale))
+			ass:rect(
+				bg_rect.ax + edge_border + round(state.radius), bg_rect.ay + edge_border,
+				bg_rect.bx - edge_border - round(state.radius), bg_rect.ay + edge_border + highlight_h,
+				{color = 'FFFFFF', opacity = menu_opacity * 0.10}
+			)
+		end
 		-- Every visible cascade panel owns its wheel input. The recursive submenus
 		-- are not `self.current`, so binding only the element rectangle either
 		-- missed their wheel events or scrolled the root panel.
@@ -1858,11 +1923,17 @@ function Menu:render()
 			})
 		end
 
-		-- Draw submenu if selected
+		-- Draw submenu if selected（两阶段绘制）
+		-- 阶段1：仅计算子菜单几何位置，供本层 items 循环判断鼠标是否在子菜单内；
+		-- 阶段2（本层全部内容绘制完成后）才真正递归绘制子菜单，保证子菜单 z-order
+		-- 高于父菜单内容——重叠时父菜单文字/高亮不会盖在子菜单上面。
 		local submenu_rect, current_item = nil,
 			not hover_frozen and (is_current or is_submenu)
 			and menu.selected_index and menu.items[menu.selected_index]
 		local submenu_is_hovered = false
+		local submenu_draw = nil
+		-- 子菜单及其后代的链范围（供阶段2 递归时传入，作用域提升到 if 块外）
+		local submenu_chain_ax, submenu_chain_bx
 		if current_item and current_item.items then
 			-- Align cascading submenu with the hovered parent item instead of centering it independently.
 			local parent_item_ay = content_rect.ay - menu.scroll_y
@@ -1878,10 +1949,96 @@ function Menu:render()
 				display.height - current_item.height - self.padding - edge_margin
 			)
 			current_item.top = clamp(min_top, parent_item_ay + self.padding, max_top)
-			local submenu_x = bg_rect.bx + self.gap
-			submenu_rect = draw_menu(current_item --[[@as MenuStack]], submenu_x, 1)
-			submenu_is_hovered = get_point_to_rectangle_proximity(cursor, submenu_rect) <= 0
+			-- 子菜单定位：优先沿当前级联方向完整展开；放不下时尝试另一侧完整展开
+			-- （首级即"左翻/右翻"，并决定整条链方向）；两侧都不足时以完整宽度
+			-- 重叠兜底（贴屏幕边缘 + 强制不透明 + 白色高亮边缘条保证可读）。
+			-- 不做宽度压缩：压缩会导致菜单内容被省略成"..."，比重叠更难读。
+			local submenu_width = current_item.width + self.padding * 2
+			local original_width = current_item.width
+			local submenu_x, child_direction, force_opaque
+			local right_x = bg_rect.bx + self.gap
+			local right_space = display.width - edge_margin - right_x
+			local left_space = bg_rect.ax - self.gap - edge_margin
+			local function overlap_fallback()
+				-- 两侧空间都不足：完整宽度重叠兜底，位置贴近当前方向屏幕边缘，
+				-- 强制不透明 + 白色高亮边缘条，保证内容完整可读
+				if cascade_direction == 1 then
+					submenu_x = clamp(edge_margin, right_x, display.width - edge_margin - submenu_width)
+				else
+					submenu_x = math.max(edge_margin, bg_rect.ax - self.gap - submenu_width)
+				end
+				child_direction = cascade_direction
+				force_opaque = true
+			end
+			-- 子菜单与父菜单面板在 x 方向重叠时强制不透明（内容完整 + 白色高亮边缘条），
+			-- 避免半透明叠层导致父菜单文字透出难以辨认
+			local function mark_overlap_opaque()
+				-- 与直接父菜单或任意祖先面板在 x 方向重叠时强制不透明，
+				-- 保证重叠处子菜单内容完整可读（半透明叠层会透出下层文字）
+				local overlaps_ancestor = chain_ax and chain_bx
+					and submenu_x < chain_bx and submenu_x + submenu_width > chain_ax
+				if not force_opaque and (
+					overlaps_ancestor
+					or (submenu_x < bg_rect.bx and submenu_x + submenu_width > bg_rect.ax)
+				) then
+					force_opaque = true
+				end
+			end
+			-- 当前方向完整展开
+			if cascade_direction == 1 and right_space >= submenu_width then
+				submenu_x, child_direction = right_x, 1
+			elseif cascade_direction == -1 and left_space >= submenu_width then
+				submenu_x = bg_rect.ax - self.gap - submenu_width
+				child_direction = -1
+			-- 另一侧完整展开（首级=翻转并决定链方向；深层同样允许，保证内容完整）
+			elseif left_space >= submenu_width then
+				submenu_x = bg_rect.ax - self.gap - submenu_width
+				child_direction = -1
+			elseif right_space >= submenu_width then
+				submenu_x, child_direction = right_x, 1
+			else
+				overlap_fallback()
+			end
+			mark_overlap_opaque()
+			-- 更新链范围供下一层重叠检测
+			submenu_chain_ax = chain_ax and math.min(chain_ax, submenu_x) or math.min(bg_rect.ax, submenu_x)
+			submenu_chain_bx = chain_bx and math.max(chain_bx, submenu_x + submenu_width) or math.max(bg_rect.bx, submenu_x + submenu_width)
+			-- 阶段1：以 measure_only 递归测量整条后代链的真实合并 rect
+			-- （不绘制、不绑事件）。它是“本层展开的全部子菜单”的完整范围，
+			-- 鼠标在任意深层子菜单上时本层都能正确保持选中，不会折叠菜单。
+			local compressed_width = current_item.width
+			local submenu_top = current_item.top
+			-- 测量前先恢复原始 width/top（resolve 可能已压缩/下移子菜单面板），
+			-- 供本层 items 循环使用原始值绘制父菜单行
+			current_item.width = original_width
 			current_item.top = original_top
+			-- 测量时需要子菜单面板的压缩宽度与 clamp 后的 top
+			current_item.width = compressed_width
+			current_item.top = submenu_top
+			submenu_rect = draw_menu(
+				current_item --[[@as MenuStack]],
+				submenu_x,
+				1,
+				child_direction,
+				force_opaque,
+				true --[[ measure_only ]],
+				submenu_chain_ax,
+				submenu_chain_bx
+			)
+			current_item.width = original_width
+			current_item.top = original_top
+			submenu_is_hovered = get_point_to_rectangle_proximity(cursor, submenu_rect) <= 0
+			-- 暂存阶段2 绘制参数（含压缩宽度与 clamp 后 top，供真实绘制时还原）
+			submenu_draw = {
+				item = current_item,
+				x = submenu_x,
+				direction = child_direction,
+				force_opaque = force_opaque,
+				original_width = original_width,
+				original_top = original_top,
+				compressed_width = compressed_width,
+				submenu_top = submenu_top,
+			}
 		end
 
 		---@type MenuAction|nil
@@ -2157,6 +2314,17 @@ function Menu:render()
 						menu.selected_index = index
 						if not is_selected then
 							is_selected = true
+							-- 新悬停到有子菜单的项：记录展开时间戳并启动延迟定时器，
+							-- 满 delay 后才真正绘制子菜单，避免快速扫过时误弹出
+							if item.items then
+								menu.submenu_open_at = now
+								local submenu_delay = math.max(0, tonumber(options.menu_submenu_delay) or 0.5)
+								if submenu_delay > 0 then
+									self.submenu_open_timer.timeout = submenu_delay
+									self.submenu_open_timer:kill()
+									self.submenu_open_timer:resume()
+								end
+							end
 							request_render()
 						end
 						if is_current or is_submenu then
@@ -2434,6 +2602,30 @@ function Menu:render()
 			request_render()
 		end
 
+		-- 阶段2：本层全部内容绘制完成后，再递归绘制子菜单。
+		-- 递归内层同样后置绘制它的子菜单，因此最深层的子菜单最后写入 ASS，
+		-- 整条级联链 z-order 正确：子菜单永远覆盖父菜单内容，重叠时不会串扰。
+		-- 延迟展开：鼠标新悬停到有子菜单的项后，需停留满 menu_submenu_delay 秒才绘制子菜单；
+		-- 延迟期间阶段1 的测量 rect 已提供 hover 保护，鼠标不会误折叠菜单链
+		local submenu_delay = math.max(0, tonumber(options.menu_submenu_delay) or 0.5)
+		if submenu_draw and (submenu_delay <= 0 or (now - (menu.submenu_open_at or 0)) >= submenu_delay) then
+			-- 真实绘制前还原 resolve 计算出的压缩宽度与 clamp 后 top
+			submenu_draw.item.width = submenu_draw.compressed_width
+			submenu_draw.item.top = submenu_draw.submenu_top
+			submenu_rect = draw_menu(
+				submenu_draw.item --[[@as MenuStack]],
+				submenu_draw.x,
+				1,
+				submenu_draw.direction,
+				submenu_draw.force_opaque,
+				measure_only,
+				submenu_chain_ax,
+				submenu_chain_bx
+			)
+			submenu_draw.item.width = submenu_draw.original_width
+			submenu_draw.item.top = submenu_draw.original_top
+		end
+
 		-- Return the bounds of this panel and its complete visible descendant
 		-- chain. Ancestors must treat the cursor as still inside their submenu
 		-- while it is over a grandchild panel, otherwise entering level three
@@ -2466,7 +2658,8 @@ function Menu:render()
 	end
 
 	-- Active menu
-	draw_menu(self.current, cascade_x, 0)
+	local root_bx = cascade_x + self.current.width + self.padding * 2
+	draw_menu(self.current, cascade_x, 0, 1, false, false, cascade_x, root_bx)
 
 	-- Parent menus
 	local parent_menu = self.current.parent_menu
@@ -2474,7 +2667,7 @@ function Menu:render()
 
 	while parent_menu do
 		parent_offset_x = parent_offset_x - parent_menu.width - self.padding * 2 - self.gap
-		draw_menu(parent_menu, parent_offset_x, parent_horizontal_index)
+		draw_menu(parent_menu, parent_offset_x, parent_horizontal_index, 1)
 		parent_horizontal_index = parent_horizontal_index - 1
 		parent_menu = parent_menu.parent_menu
 	end

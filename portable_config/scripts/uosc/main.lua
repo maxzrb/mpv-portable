@@ -56,6 +56,9 @@ defaults = {
 	menu_item_height = 36,
 	menu_min_width = 260,
 	menu_padding = 4,
+	menu_frosted = false,
+	menu_open_file_mode = 'replace',
+	menu_submenu_delay = 0.5,
 	menu_font = '',
 	menu_type_to_search = true,
 
@@ -1266,6 +1269,21 @@ mp.register_script_message('chapter-display-toggle', function(value)
 	)
 end)
 publish_chapter_display_state()
+-- 打开方式单选：replace=替换当前实例，new=启动新实例（持久化）
+local function set_open_file_mode(mode)
+	options.menu_open_file_mode = mode
+	persist_uosc_option('menu_open_file_mode', options.menu_open_file_mode)
+	mp.osd_message(
+		mode == 'new' and '打开视频：新 mpv 实例' or '打开视频：替换当前实例',
+		2
+	)
+end
+mp.register_script_message('open-mode-replace', function() set_open_file_mode('replace') end)
+mp.register_script_message('open-mode-new', function() set_open_file_mode('new') end)
+-- 兼容旧 toggle 命令
+mp.register_script_message('open-mode-toggle', function()
+	set_open_file_mode(options.menu_open_file_mode == 'new' and 'replace' or 'new')
+end)
 mp.register_script_message('toggle-elements', function(elements) Elements:toggle(comma_split(elements)) end)
 mp.register_script_message('set-min-visibility', function(visibility, elements)
 	local fraction = tonumber(visibility)
