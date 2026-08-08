@@ -488,36 +488,59 @@ function Timeline:render()
 	-- Chapters
 	local hovered_chapter = nil
 	if (config.opacity.chapters > 0 and (#state.chapters > 0 or state.ab_loop_a or state.ab_loop_b)) then
-		local diamond_radius = math.min(math.max(1, foreground_size * 0.8), self.chapter_size)
-		local diamond_radius_hovered = diamond_radius * 2
-		local diamond_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
+		-- 章节标记：每个章节位置画两个暗夜蓝色小三角形（进度条上方一个尖端朝下、下方一个尖端朝上），
+		-- 替代原菱形标记，在细进度条上更醒目
+		-- serialize_rgba 将 RGB 暗夜蓝 #1E3A8A 转为 ASS 的 BGR 顺序，避免直接写 BGR 值
+		local CHAPTER_COLOR = serialize_rgba('1E3A8A').color -- 暗夜蓝
+		local chapter_border = options.timeline_border and math.max(options.timeline_border, 1) or 1
+		local triangle_half_width = math.max(2, round(self.chapter_size * 0.9))
+		local triangle_height = math.max(2, round(self.chapter_size * 1.5))
+		local triangle_radius = math.max(triangle_half_width, triangle_height)
+		local triangle_radius_hovered = triangle_radius * 2
 
-		if diamond_radius > 0 then
+		if triangle_height > 0 and triangle_half_width > 0 then
 			local chapter_y = fay + foreground_size / 2
-			local function draw_chapter(time, radius)
+
+			---@param time number
+			---@param half_width number 三角形底边半宽
+			---@param height number 三角形高
+			local function draw_chapter(time, half_width, height)
 				local chapter_x = t2x(time)
-				ass:new_event()
-				ass:append(string.format(
-					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
-				))
-				ass:draw_start()
-				ass:move_to(chapter_x - radius, chapter_y)
-				ass:line_to(chapter_x, chapter_y - radius)
-				ass:line_to(chapter_x + radius, chapter_y)
-				ass:line_to(chapter_x, chapter_y + radius)
-				ass:draw_stop()
+				local function draw_triangle(x1, y1, x2, y2, x3, y3)
+					ass:new_event()
+					ass:append(string.format(
+						'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
+						chapter_border, CHAPTER_COLOR, bg, bg, opacity_to_alpha(config.opacity.chapters)
+					))
+					ass:draw_start()
+					ass:move_to(x1, y1)
+					ass:line_to(x2, y2)
+					ass:line_to(x3, y3)
+					ass:draw_stop()
+				end
+				-- 上三角形：底边在进度条上方，尖端朝下贴住进度条上边缘
+				draw_triangle(
+					chapter_x - half_width, fay - height,
+					chapter_x + half_width, fay - height,
+					chapter_x, fay
+				)
+				-- 下三角形：底边在进度条下方，尖端朝上贴住进度条下边缘
+				draw_triangle(
+					chapter_x - half_width, fby + height,
+					chapter_x + half_width, fby + height,
+					chapter_x, fby
+				)
 			end
 
 			if #state.chapters > 0 then
 				-- Find hovered chapter indicator
 				local closest_delta = math.huge
 
-				if self.proximity_raw < diamond_radius_hovered then
+				if self.proximity_raw < triangle_radius_hovered then
 					for i, chapter in ipairs(state.chapters) do
 						local chapter_x = t2x(chapter.time)
 						local cursor_chapter_delta = math.sqrt((cursor.x - chapter_x) ^ 2 + (cursor.y - chapter_y) ^ 2)
-						if cursor_chapter_delta <= diamond_radius_hovered and cursor_chapter_delta < closest_delta then
+						if cursor_chapter_delta <= triangle_radius_hovered and cursor_chapter_delta < closest_delta then
 							hovered_chapter, closest_delta = chapter, cursor_chapter_delta
 							self.is_hovered = true
 						end
@@ -525,8 +548,8 @@ function Timeline:render()
 				end
 
 				for i, chapter in ipairs(state.chapters) do
-					if chapter ~= hovered_chapter then draw_chapter(chapter.time, diamond_radius) end
-					local circle = {point = {x = t2x(chapter.time), y = chapter_y}, r = diamond_radius_hovered}
+					if chapter ~= hovered_chapter then draw_chapter(chapter.time, triangle_half_width, triangle_height) end
+					local circle = {point = {x = t2x(chapter.time), y = chapter_y}, r = triangle_radius_hovered}
 					if visibility > 0 and chapter == hovered_chapter then
 						cursor:zone('primary_down', circle, function()
 							mp.commandv('seek', chapter.time, 'absolute+exact')
@@ -536,10 +559,10 @@ function Timeline:render()
 
 				-- Render hovered chapter above others
 				if hovered_chapter then
-					draw_chapter(hovered_chapter.time, diamond_radius_hovered)
-					timestamp_gap = tooltip_gap + round(diamond_radius_hovered)
+					draw_chapter(hovered_chapter.time, triangle_half_width * 2, triangle_height * 2)
+					timestamp_gap = tooltip_gap + round(triangle_radius_hovered)
 				else
-					timestamp_gap = tooltip_gap + round(diamond_radius)
+					timestamp_gap = tooltip_gap + round(triangle_radius)
 				end
 			end
 
@@ -554,7 +577,7 @@ function Timeline:render()
 				ass:new_event()
 				ass:append(string.format(
 					'{\\pos(0,0)\\rDefault\\an7\\blur0\\yshad0.01\\bord%f\\1c&H%s\\3c&H%s\\4c&H%s\\1a&H%X&\\3a&H00&\\4a&H00&}',
-					diamond_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
+					chapter_border, fg, bg, bg, opacity_to_alpha(config.opacity.chapters)
 				))
 				ass:draw_start()
 				ass:move_to(x, fby - ab_radius)

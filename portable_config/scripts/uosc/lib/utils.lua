@@ -147,6 +147,32 @@ function get_point_to_point_proximity(point_a, point_b)
 	return math.sqrt(dx * dx + dy * dy)
 end
 
+-- 进度条悬停渐隐：鼠标 Y 轴靠近进度条（上下对称）时返回渐隐系数 0→1
+-- （0=保持可见，1=完全隐藏），并返回鼠标是否位于元素自身交互区内。
+-- 元素调用方在鼠标位于交互区时保持可见（不应用渐隐），离开后按位置平滑过渡，
+-- 避免元素紧贴进度条时出现“在元素上全亮、移开瞬间消失”的跳变。
+---@param timeline table|nil
+---@param element_top number|nil
+---@param element_bottom number|nil
+---@return number fade 渐隐系数 0~1
+---@return boolean mouse_in_element 鼠标是否在元素交互区内
+function get_timeline_hover_fade(timeline, element_top, element_bottom)
+	if not (timeline and timeline.enabled and timeline.size > 0) then return 0, false end
+	-- 鼠标不在进度条水平范围内时不处理，避免误伤窗口边缘移动
+	if cursor.x < timeline.ax - 24 or cursor.x > timeline.bx + 24 then return 0, false end
+	local y = cursor.y
+	local mouse_in_element = element_top and element_bottom
+		and y >= element_top and y <= element_bottom
+	-- 鼠标悬停在进度条内部：完全隐藏以显示悬停时间/章节/缩略图
+	if y >= timeline.ay and y <= timeline.by then return 1, mouse_in_element end
+	local fade_start = 9 * state.scale
+	local fade_end = 2 * state.scale
+	local distance = y < timeline.ay and (timeline.ay - y) or (y - timeline.by)
+	if distance >= fade_start then return 0, mouse_in_element end
+	if distance <= fade_end then return 1, mouse_in_element end
+	return 1 - (distance - fade_end) / (fade_start - fade_end), mouse_in_element
+end
+
 ---@param point Point
 ---@param hitbox Hitbox
 function point_collides_with(point, hitbox)

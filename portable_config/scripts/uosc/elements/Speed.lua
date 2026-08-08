@@ -23,7 +23,13 @@ function Speed:init(props)
 end
 
 function Speed:get_visibility()
-	return Elements:maybe('timeline', 'get_is_hovered') and -1 or Element.get_visibility(self)
+	-- 鼠标 Y 轴靠近进度条时渐隐，避免硬切；鼠标在滑块自身交互区内保持可见
+	local base = Element.get_visibility(self)
+	local fade, mouse_in_element = get_timeline_hover_fade(Elements.timeline, self.ay, self.by)
+	if mouse_in_element then return base end
+	if fade <= 0 then return base end
+	if fade >= 1 then return 0 end
+	return base * (1 - fade)
 end
 
 function Speed:on_coordinates()

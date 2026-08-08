@@ -362,6 +362,27 @@ end
 function MediaInfo:on_display() request_render() end
 function MediaInfo:on_options() request_render() end
 
+-- 鼠标 Y 轴靠近进度条时与速度滑块同步渐隐（避免遮挡悬停信息），
+-- 鼠标位于胶囊自身区域内保持可见，不影响点击切换码率等交互
+function MediaInfo:get_visibility()
+	local base = Element.get_visibility(self)
+	local timeline = Elements.timeline
+	if not (timeline and timeline.enabled and timeline.size > 0) then return base end
+	local center_y = self:get_center_y()
+	local height = self:get_height()
+	local top, bottom = nil, nil
+	if center_y and height and height > 0 then
+		local pad = round(2 * state.scale)
+		top = center_y - height / 2 - pad
+		bottom = center_y + height / 2 + pad
+	end
+	local fade, mouse_in_element = get_timeline_hover_fade(timeline, top, bottom)
+	if mouse_in_element then return base end
+	if fade <= 0 then return base end
+	if fade >= 1 then return 0 end
+	return base * (1 - fade)
+end
+
 -- 供速度滑块等元素对齐胶囊高度
 function MediaInfo:get_height()
 	return round(MEDIA_INFO_CAPSULE_HEIGHT * state.scale)
